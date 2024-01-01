@@ -33,8 +33,14 @@
 
 pub use app::App;
 pub use entity::Entity;
-pub use property::Text;
+pub use property::Property;
 
 pub mod app;
 pub mod entity;
 pub mod property;
+
+#[doc(hidden)]
+pub mod derive {
+    pub use generic_array;
+    pub use maud;
+}

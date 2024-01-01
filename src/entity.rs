@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::property::PropertyInfo;
 
+pub use derived_cms_derive::Entity;
+
 pub trait Entity: for<'de> Deserialize<'de> + Serialize {
     type NumberOfColumns: ArrayLength;
 
