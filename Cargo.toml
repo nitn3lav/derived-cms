@@ -6,3 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+axum = "0.7.3"
+capitalize = "0.1.0"
+chrono = { version = "0.4.31", features = ["serde"] }
+generic-array = "1.0.0"
+include_dir = "0.7.3"
+maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version = "0.25.0", features = [
+    "axum",
+] }
+mime_guess = "2.0.4"
+regex = "1.10.2"
+serde = { version = "1.0.193", features = ["derive"] }
+uuid = { version = "1.6.1", features = ["v4"] }
+
+[dev-dependencies]
+tokio = { version = "1.35.1", features = ["full"] }
