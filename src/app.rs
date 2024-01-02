@@ -73,7 +73,7 @@ fn document(body: Markup) -> Markup {
     }
 }
 
-fn include_static_files(dir: &'static Dir<'_>) -> Router {
+pub fn include_static_files(dir: &'static Dir<'_>) -> Router {
     let mut app = Router::new();
     for v in dir.entries() {
         match v {
