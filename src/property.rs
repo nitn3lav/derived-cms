@@ -160,17 +160,15 @@ where
         ctx: &FormRenderContext,
     ) -> PreEscaped<String> {
         let btn_id = Uuid::new_v4();
-        let table_id = Uuid::new_v4();
+        let list_id = Uuid::new_v4();
         let template_id = Uuid::new_v4();
         let name_regex = regex::escape(name);
         html! {
-            div class="cms-list-input" {
-                table id=(table_id) class="cms-table" {
-                    @if let Some(v) = value {
-                        @for (i, v) in v.iter().enumerate() {
-                            fieldset class="cms-list-element" {
-                                (Property::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
-                            }
+            div class="cms-list-input" id=(list_id) {
+                @if let Some(v) = value {
+                    @for (i, v) in v.iter().enumerate() {
+                        fieldset class="cms-list-element" {
+                            (Property::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
                         }
                     }
                 }
@@ -180,14 +178,14 @@ where
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
 const btn = document.getElementById("{btn_id}");
-const table = document.getElementById("{table_id}");
+const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
 template.remove();
 btn.addEventListener("click", (e) => {{
     let el = template.cloneNode(true);
     el.removeAttribute("id");
-    setIndex(el, table.childElementCount)
-    table.appendChild(el);
+    setIndex(el, list.childElementCount - 2)
+    list.insertBefore(el, btn);
     e.preventDefault();
 }});
 function setIndex(el, i) {{
