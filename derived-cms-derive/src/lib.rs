@@ -189,7 +189,8 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
     let x = data
         .variants
         .iter()
-        .map(|v| {
+        .enumerate()
+        .map(|(i, v)| {
             let variant_attr = PropertyVariantOptions::from_variant(v)?;
 
             let ident = &v.ident;
@@ -208,23 +209,30 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                         .iter()
                         .enumerate()
                         .map(|(i, _)| Ident::new(&format!("U{i}"), Span::call_site()))
-                        .map(|i|quote!(#i,))
+                        .map(|i| quote!(#i,))
                         .collect::<TokenStream>();
-                    Some(quote!{
+                    Some(quote! {
                         match value {
-                            ::std::option::Option::Some(Self::#ident(#fields)) => ::std::option::Option::Some(#fields),
+                            ::std::option::Option::Some(Self::#ident(#fields)) => {
+                                _selected_idx = #i;
+                                ::std::option::Option::Some(#fields)
+                            },
                             _ => ::std::option::Option::None,
                         }
                     })
-                },
+                }
                 syn::Fields::Unit => None,
             };
-            let content_val = content_val.map(|content_val| quote!{
-                ::std::option::Option::Some(#found_crate::property::PropertyInfo {
-                    name: #name_content,
-                    value: ::std::boxed::Box::new(#content_val),
+            let content_val = content_val
+                .map(|content_val| {
+                    quote! {
+                        ::std::option::Option::Some(#found_crate::property::PropertyInfo {
+                            name: #name_content,
+                            value: ::std::boxed::Box::new(#content_val),
+                        })
+                    }
                 })
-            }).unwrap_or(quote!(::std::option::Option::None));
+                .unwrap_or(quote!(::std::option::Option::None));
 
             Ok(quote! {
                 #found_crate::property::EnumVariant {
@@ -245,7 +253,8 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                 _name_human: &str,
                 ctx: &derived_cms::render::FormRenderContext,
             ) -> #found_crate::derive::maud::Markup {
-                #found_crate::render::property_enum(&[#x], ctx)
+                let mut _selected_idx = 0;
+                #found_crate::render::property_enum(&[#x], _selected_idx, ctx)
             }
         }
     })

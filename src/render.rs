@@ -47,21 +47,37 @@ pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
     }
 }
 
-pub fn property_enum<'a>(variants: &[EnumVariant<'a>], ctx: &FormRenderContext<'a>) -> Markup {
+pub fn property_enum<'a>(
+    variants: &[EnumVariant<'a>],
+    selected: usize,
+    ctx: &FormRenderContext<'a>,
+) -> Markup {
     let id_type = Uuid::new_v4();
     let id_data = Uuid::new_v4();
     html! {
         div class="cms-enum-type" id=(id_type) {
-            @for variant in variants {
+            @for (i, variant) in variants.iter().enumerate() {
                 @let id = &format!("{}_radio-button_{}", variant.name, variant.value);
-
-                input type="radio" name=(variant.name) value=(variant.value) id=(id) onchange="cmsEnumInputOnchange(this)" {}
+                input
+                    type="radio"
+                    name=(variant.name)
+                    value=(variant.value)
+                    id=(id)
+                    onchange="cmsEnumInputOnchange(this)"
+                    checked[i == selected] {}
                 label for=(id) {(variant.value.to_case(Case::Title))}
             }
         }
         div class="cms-enum-data" id=(id_data) {
-            @for variant in variants {
-                div {
+            @for (i, variant) in variants.iter().enumerate() {
+                @let class = if i < selected {
+                    "cms-enum-container cms-enum-hidden cms-enum-hidden-left"
+                } else if i > selected {
+                    "cms-enum-container cms-enum-hidden cms-enum-hidden-right"
+                } else {
+                    "cms-enum-container"
+                };
+                div class=(class) {
                     @if let Some(ref data) = variant.content {
                         (data.value.render_input(variant.name, &variant.value.to_case(Case::Title), ctx))
                     }
