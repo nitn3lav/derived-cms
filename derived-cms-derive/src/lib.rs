@@ -72,7 +72,7 @@ impl From<RenameAll> for Case {
 fn found_crate() -> TokenStream {
     let found_crate = crate_name("derived-cms").expect("derived-cms is present in `Cargo.toml`");
     match found_crate {
-        FoundCrate::Itself => quote!(crate),
+        FoundCrate::Itself => quote!(derived_cms),
         FoundCrate::Name(name) => {
             let ident = Ident::new(&name, Span::call_site());
             quote!( ::#ident )
