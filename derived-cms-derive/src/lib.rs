@@ -186,24 +186,21 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
     let ident = &input.ident;
     let attr = PropertyEnumOptions::from_derive_input(input)?;
 
-    let (kind, data): (Vec<_>,Vec<_>) = data
+    let x = data
         .variants
         .iter()
         .map(|v| {
             let variant_attr = PropertyVariantOptions::from_variant(v)?;
 
             let ident = &v.ident;
-            let name_human = ident.to_string().to_case(Case::Title);
-            let name_serde = renamed_name(
-                ident.to_string(),
-                variant_attr.rename,
-                attr.rename_all,
-            );
             let tag = &attr.tag;
             let content = &attr.content;
-            let id = quote!((&format!("{}_{}_{}_radio", ctx.form_id, name, #name_serde)));
 
-            let value = match v.fields {
+            let name_tag = quote!(&::std::format!("{}[{}]", name, #tag));
+            let name_content = quote!(&::std::format!("{}[{}]", name, #content));
+            let value = renamed_name(ident.to_string(), variant_attr.rename, attr.rename_all);
+
+            let content_val = match v.fields {
                 syn::Fields::Named(_) => todo!(),
                 syn::Fields::Unnamed(ref fields) => {
                     let fields = &fields.unnamed;
@@ -222,30 +219,22 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                 },
                 syn::Fields::Unit => None,
             };
+            let content_val = content_val.map(|content_val| quote!{
+                ::std::option::Option::Some(#found_crate::property::PropertyInfo {
+                    name: #name_content,
+                    value: ::std::boxed::Box::new(#content_val),
+                })
+            }).unwrap_or(quote!(::std::option::Option::None));
 
-            let value = value.map(|value|{
-                quote! {
-                    div {
-                        (#found_crate::Property::render_input(#value, &format!("{}[{}]", name, #content), #name_human, ctx))
-                    }
-                }
-            }).unwrap_or(quote!());
-
-            syn::Result::Ok((
-                quote! {
-                    input type="radio" name=(format!("{}[{}]", name, #tag)) value=#name_serde id=#id {}
-                    label for=#id {#name_human}
+            Ok(quote! {
+                #found_crate::property::EnumVariant {
+                    name: #name_tag,
+                    value: #value,
+                    content: #content_val,
                 },
-                value
-            ))
+            })
         })
-        .map(|res|match res {
-            Ok((l, r)) => (syn::Result::Ok(l), syn::Result::Ok(r)),
-            Err(e) => (syn::Result::Err(e.clone()), syn::Result::Err(e)),
-        })
-        .unzip();
-    let kind = kind.into_iter().collect::<Result<TokenStream, _>>()?;
-    let data = data.into_iter().collect::<Result<TokenStream, _>>()?;
+        .collect::<syn::Result<TokenStream>>()?;
 
     Ok(quote! {
         #[automatically_derived]
@@ -256,14 +245,7 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                 _name_human: &str,
                 ctx: &derived_cms::property::FormRenderContext,
             ) -> #found_crate::derive::maud::Markup {
-                #found_crate::derive::maud::html! {
-                    div class="cms-enum-type" {
-                        #kind
-                    }
-                    div class="cms-enum-data" {
-                        #data
-                    }
-                }
+                #found_crate::property::render_enum(&[#x], ctx)
             }
         }
     })

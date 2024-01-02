@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, TimeZone};
+use convert_case::{Case, Casing};
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -51,6 +52,37 @@ pub struct PropertyInfo<'a> {
 pub struct FormRenderContext<'a> {
     /// unique id of the HTML form element
     pub form_id: &'a str,
+}
+
+pub struct EnumVariant<'a> {
+    pub name: &'a str,
+    pub value: &'a str,
+    pub content: Option<PropertyInfo<'a>>,
+}
+
+pub fn render_enum<'a>(variants: &[EnumVariant<'a>], ctx: &FormRenderContext<'a>) -> Markup {
+    let id_type = Uuid::new_v4();
+    let id_data = Uuid::new_v4();
+    html! {
+        div class="cms-enum-type" id=(id_type) {
+            @for variant in variants {
+                @let id = &format!("{}_radio-button_{}", variant.name, variant.value);
+
+                input type="radio" name=(variant.name) value=(variant.value) id=(id) onchange="cmsEnumInputOnchange(this)" {}
+                label for=(id) {(variant.value.to_case(Case::Title))}
+            }
+        }
+        div class="cms-enum-data" id=(id_data) {
+            @for variant in variants {
+                div {
+                    @if let Some(ref data) = variant.content {
+                        (data.value.render_input(variant.name, &variant.value.to_case(Case::Title), ctx))
+                    }
+                }
+            }
+        }
+        script src="/js/enum.js" {}
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -166,11 +198,13 @@ where
                 table id=(table_id) class="cms-table" {
                     @if let Some(v) = value {
                         @for (i, v) in v.iter().enumerate() {
-                            (Property::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
+                            fieldset class="cms-list-element" {
+                                (Property::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
+                            }
                         }
                     }
                 }
-                div id=(template_id) {
+                fieldset id=(template_id) class="cms-list-element" {
                     (Property::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx))
                 }
                 button id=(btn_id) {"+"}
@@ -181,6 +215,7 @@ const template = document.getElementById("{template_id}");
 template.remove();
 btn.addEventListener("click", (e) => {{
     let el = template.cloneNode(true);
+    el.removeAttribute("id");
     setIndex(el, table.childElementCount)
     table.appendChild(el);
     e.preventDefault();
@@ -188,6 +223,12 @@ btn.addEventListener("click", (e) => {{
 function setIndex(el, i) {{
     for (const e of el.querySelectorAll("[name]")) {{
         e.name = e.name.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
+    }}
+    for (const e of el.querySelectorAll("[id]")) {{
+        e.id = e.id.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
+    }}
+    for (const e of el.querySelectorAll("[for]")) {{
+        e.attributes.for.value = e.attributes.for.value.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
     }}
 }}
                 "#).trim()))}
