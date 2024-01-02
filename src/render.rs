@@ -28,12 +28,24 @@ pub fn document(body: Markup) -> Markup {
     }
 }
 
+pub fn sidebar<'a>(names: impl IntoIterator<Item = &'a str>, active: &str) -> Markup {
+    html! {
+        nav class="cms-sidebar" {
+            @for name in names {
+                a href=(&format!("/{name}")) class=[(name == active).then_some("active")] {
+                    (name.to_case(Case::Title))
+                }
+            }
+        }
+    }
+}
+
 pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
         main {
-            h1 {"Erstelle neues " (E::name().to_case(Case::Title))}
+            h1 {"Erstelle " (E::name().to_case(Case::Title))}
             form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
                 @for f in Entity::properties(value) {
                     div class="cms-prop-container" {

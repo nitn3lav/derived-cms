@@ -1,3 +1,5 @@
+use std::{collections::BTreeSet, marker::PhantomData};
+
 use axum::{
     http::{header::CONTENT_TYPE, HeaderMap, HeaderValue},
     routing::get,
@@ -5,6 +7,7 @@ use axum::{
 };
 
 use include_dir::{include_dir, Dir, DirEntry};
+use maud::html;
 
 use crate::{entity::Entity, render};
 
@@ -12,25 +15,76 @@ static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 
 /// builds an [`axum::Router`] with all routes required by the admin interface
 #[derive(Debug, Default)]
-pub struct App {
+pub struct App<T = ()>
+where
+    T: 'static,
+{
     router: Router,
+    names_plural: BTreeSet<&'static str>,
+    phantom: PhantomData<&'static T>,
+}
+impl<T> Clone for App<T> {
+    fn clone(&self) -> Self {
+        Self {
+            router: self.router.clone(),
+            names_plural: self.names_plural.clone(),
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl App {
     pub fn new() -> Self {
         Default::default()
     }
-
-    pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
-        self.router = self.router.route(
-            &format!("/{}/add", E::name_plural()),
-            get(|| async { render::document(render::add_entity::<E>(None)) }),
-        );
-        self
+}
+impl<T> App<T> {
+    pub fn entity<E: Entity + Send + Sync>(mut self) -> App<(T, E)> {
+        self.names_plural.insert(E::name_plural());
+        App {
+            router: self.router,
+            names_plural: self.names_plural,
+            phantom: PhantomData,
+        }
     }
 
-    pub fn build(self) -> Router {
+    fn build_end(self) -> Router {
         self.router.nest("/", include_static_files(&STATIC_ASSETS))
+    }
+    fn build_entity<E: Entity>(self) -> Router {
+        self.router.route(
+            &format!("/{}/add", E::name_plural()),
+            get(move || async move {
+                render::document(html! {
+                    (render::sidebar(self.names_plural, E::name_plural()))
+                    (render::add_entity::<E>(None))
+                })
+            }),
+        )
+    }
+}
+impl<T: BuildApp> App<T> {
+    pub fn build(self) -> Router {
+        T::build(self)
+    }
+}
+
+pub trait BuildApp {
+    fn build<O>(app: App<O>) -> Router;
+}
+impl BuildApp for () {
+    fn build<O>(app: App<O>) -> Router {
+        app.build_end()
+    }
+}
+impl<E: Entity> BuildApp for E {
+    fn build<O>(app: App<O>) -> Router {
+        app.build_entity::<E>()
+    }
+}
+impl<T: BuildApp, E: Entity> BuildApp for (T, E) {
+    fn build<O>(app: App<O>) -> Router {
+        T::build(app.clone()).nest("/", E::build(app))
     }
 }
 
