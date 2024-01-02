@@ -3,7 +3,7 @@ use axum::{
     routing::get,
     Router,
 };
-use capitalize::Capitalize;
+use convert_case::{Case, Casing};
 use include_dir::{include_dir, Dir, DirEntry};
 use maud::{html, Markup, DOCTYPE};
 use uuid::Uuid;
@@ -41,7 +41,7 @@ fn render_add_entity<E: Entity>(value: Option<&E>) -> Markup {
     let ctx = FormRenderContext { form_id };
     html! {
         main {
-            h1 {"Erstelle neues " (E::name().capitalize())}
+            h1 {"Erstelle neues " (E::name().to_case(Case::Title))}
             form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
                 @for f in Entity::properties(value) {
                     div {

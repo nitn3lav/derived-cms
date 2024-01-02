@@ -5,6 +5,8 @@ use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use derived_cms_derive::Property;
+
 /// A property of an entity or nested within another property that can be input in a HTML form
 pub trait Property {
     fn render_input(

@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 axum = "0.7.3"
-capitalize = "0.1.0"
 chrono = { version = "0.4.31", features = ["serde"] }
+convert_case = "0.6.0"
 derived-cms-derive = { version = "0.1.0", path = "derived-cms-derive" }
 generic-array = "1.0.0"
 include_dir = "0.7.3"
