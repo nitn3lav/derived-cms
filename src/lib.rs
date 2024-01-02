@@ -40,6 +40,7 @@ pub use property::Property;
 pub mod app;
 pub mod entity;
 pub mod property;
+pub mod render;
 
 #[doc(hidden)]
 pub mod derive {

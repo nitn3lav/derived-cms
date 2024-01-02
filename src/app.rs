@@ -3,12 +3,10 @@ use axum::{
     routing::get,
     Router,
 };
-use convert_case::{Case, Casing};
-use include_dir::{include_dir, Dir, DirEntry};
-use maud::{html, Markup, DOCTYPE};
-use uuid::Uuid;
 
-use crate::{entity::Entity, property::FormRenderContext};
+use include_dir::{include_dir, Dir, DirEntry};
+
+use crate::{entity::Entity, render};
 
 static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 
@@ -26,50 +24,13 @@ impl App {
     pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
         self.router = self.router.route(
             &format!("/{}/add", E::name_plural()),
-            get(|| async { document(render_add_entity::<E>(None)) }),
+            get(|| async { render::document(render::add_entity::<E>(None)) }),
         );
         self
     }
 
     pub fn build(self) -> Router {
         self.router.nest("/", include_static_files(&STATIC_ASSETS))
-    }
-}
-
-fn render_add_entity<E: Entity>(value: Option<&E>) -> Markup {
-    let form_id = &Uuid::new_v4().to_string();
-    let ctx = FormRenderContext { form_id };
-    html! {
-        main {
-            h1 {"Erstelle neues " (E::name().to_case(Case::Title))}
-            form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
-                @for f in Entity::properties(value) {
-                    div {
-                        label for=(f.name) {(f.name)}
-                        (f.value.render_input(f.name, f.name, &ctx))
-                    }
-                }
-                button type="submit" {"Speichern"}
-            }
-        }
-    }
-}
-
-fn document(body: Markup) -> Markup {
-    html! {
-        (DOCTYPE)
-        html {
-            head {
-                link rel="stylesheet" href="" {}
-                meta charset="utf-8" {}
-                link rel="icon" href="/favicon.png" {}
-                link rel="stylesheet" type="text/css" href="/css/main.css" {}
-                meta name="viewport" content="width=device-width, initial-scale=1" {}
-            }
-            body {
-                (body)
-            }
-        }
     }
 }
 

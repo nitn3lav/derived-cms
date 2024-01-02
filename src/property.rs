@@ -1,12 +1,13 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, TimeZone};
-use convert_case::{Case, Casing};
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use derived_cms_derive::Property;
+
+use crate::render::FormRenderContext;
 
 /// A property of an entity or nested within another property that can be input in a HTML form
 pub trait Property {
@@ -48,41 +49,10 @@ pub struct PropertyInfo<'a> {
     pub value: Box<dyn DynProperty + 'a>,
 }
 
-#[non_exhaustive]
-pub struct FormRenderContext<'a> {
-    /// unique id of the HTML form element
-    pub form_id: &'a str,
-}
-
 pub struct EnumVariant<'a> {
     pub name: &'a str,
     pub value: &'a str,
     pub content: Option<PropertyInfo<'a>>,
-}
-
-pub fn render_enum<'a>(variants: &[EnumVariant<'a>], ctx: &FormRenderContext<'a>) -> Markup {
-    let id_type = Uuid::new_v4();
-    let id_data = Uuid::new_v4();
-    html! {
-        div class="cms-enum-type" id=(id_type) {
-            @for variant in variants {
-                @let id = &format!("{}_radio-button_{}", variant.name, variant.value);
-
-                input type="radio" name=(variant.name) value=(variant.value) id=(id) onchange="cmsEnumInputOnchange(this)" {}
-                label for=(id) {(variant.value.to_case(Case::Title))}
-            }
-        }
-        div class="cms-enum-data" id=(id_data) {
-            @for variant in variants {
-                div {
-                    @if let Some(ref data) = variant.content {
-                        (data.value.render_input(variant.name, &variant.value.to_case(Case::Title), ctx))
-                    }
-                }
-            }
-        }
-        script src="/js/enum.js" {}
-    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -148,7 +118,7 @@ where
         let input_id = Uuid::new_v4();
         let hidden_id = Uuid::new_v4();
         html! {
-            input type="datetime-local" id=(input_id) {}
+            input type="datetime-local" id=(input_id) class="cms-datetime-input" {}
             input type="hidden" name=(name) id=(hidden_id) value=[value] {}
             script type="module" {(PreEscaped(format!(r#"
 const input = document.getElementById("{input_id}");

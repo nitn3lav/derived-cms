@@ -243,9 +243,9 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                 value: Option<&Self>,
                 name: &str,
                 _name_human: &str,
-                ctx: &derived_cms::property::FormRenderContext,
+                ctx: &derived_cms::render::FormRenderContext,
             ) -> #found_crate::derive::maud::Markup {
-                #found_crate::property::render_enum(&[#x], ctx)
+                #found_crate::render::property_enum(&[#x], ctx)
             }
         }
     })
