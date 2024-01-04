@@ -1,8 +1,8 @@
-use std::fmt::Display;
-
 use chrono::{DateTime, TimeZone};
+use derive_more::{Display, From, FromStr, Into};
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
+use sqlx::Database;
 use uuid::Uuid;
 
 pub use derived_cms_derive::Property;
@@ -55,13 +55,41 @@ pub struct EnumVariant<'a> {
     pub content: Option<PropertyInfo<'a>>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Text(pub String);
 
-impl Display for Text {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+impl<'r, DB: Database> sqlx::Decode<'r, DB> for Text
+where
+    String: sqlx::Decode<'r, DB>,
+{
+    fn decode(
+        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+    ) -> Result<Self, sqlx::error::BoxDynError> {
+        Ok(Self(<String as sqlx::Decode<DB>>::decode(value)?))
+    }
+}
+
+impl<DB: Database> sqlx::Type<DB> for Text
+where
+    String: sqlx::Type<DB>,
+{
+    fn type_info() -> DB::TypeInfo {
+        <String as sqlx::Type<DB>>::type_info()
+    }
+}
+
+impl<DB: Database> sqlx::Encode<'static, DB> for Text
+where
+    for<'a> String: sqlx::Encode<'a, DB>,
+{
+    fn encode_by_ref(
+        &self,
+        buf: &mut <DB as sqlx::database::HasArguments<'_>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
+        sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
 }
 
@@ -78,15 +106,11 @@ impl Property for Text {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Markdown(pub String);
-
-impl Display for Markdown {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 impl Property for Markdown {
     fn render_input(
@@ -101,6 +125,38 @@ impl Property for Markdown {
             }
             textarea name=(name) placeholder=(name_human) value=[value] {}
         }
+    }
+}
+
+impl<'r, DB: Database> sqlx::Decode<'r, DB> for Markdown
+where
+    String: sqlx::Decode<'r, DB>,
+{
+    fn decode(
+        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+    ) -> Result<Self, sqlx::error::BoxDynError> {
+        Ok(Self(<String as sqlx::Decode<DB>>::decode(value)?))
+    }
+}
+
+impl<DB: Database> sqlx::Type<DB> for Markdown
+where
+    String: sqlx::Type<DB>,
+{
+    fn type_info() -> DB::TypeInfo {
+        <String as sqlx::Type<DB>>::type_info()
+    }
+}
+
+impl<DB: Database> sqlx::Encode<'static, DB> for Markdown
+where
+    for<'a> String: sqlx::Encode<'a, DB>,
+{
+    fn encode_by_ref(
+        &self,
+        buf: &mut <DB as sqlx::database::HasArguments<'_>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
+        sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
 }
 
