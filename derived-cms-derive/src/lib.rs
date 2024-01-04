@@ -16,10 +16,17 @@ struct EntityStructOptions {
 #[derive(Debug, FromField)]
 #[darling(attributes(cms, serde))]
 struct EntityFieldOptions {
+    ident: Option<Ident>,
     /// Do not display this field in list columns
     #[darling(default)]
     skip_in_column: bool,
+    #[darling(default)]
+    skip_input: bool,
     rename: Option<String>,
+
+    // TODO: find a solution that doesn't require specifying all serde args
+    #[darling(default)]
+    default: bool,
 }
 
 #[derive(Debug, FromDeriveInput)]
@@ -98,29 +105,30 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
 
     let ident = &input.ident;
 
-    let attr = EntityStructOptions::from_attributes(&input.attrs)?;
-    let name = renamed_name(ident.to_string(), attr.rename, Some(Case::Snake));
+    let struct_attr = EntityStructOptions::from_attributes(&input.attrs)?;
+    let name = renamed_name(ident.to_string(), struct_attr.rename, Some(Case::Snake));
     let name_plural = format!("{name}s");
 
     let properties = data
         .fields
         .iter()
-        .map(|f| {
-            let field_attr = EntityFieldOptions::from_field(f)?;
+        .map(|f| EntityFieldOptions::from_field(f))
+        .filter_ok(|f| !f.skip_input)
+        .map_ok(|f| {
             let Some(ident) = &f.ident else {
-                return Ok(quote!(compile_error!(
+                return quote!(compile_error!(
                     "`Entity` can only be derived for `struct`s with named fields"
-                )));
+                ));
             };
-            let name = renamed_name(ident.to_string(), field_attr.rename, attr.rename_all);
-            syn::Result::Ok(quote! {
+            let name = renamed_name(ident.to_string(), f.rename, struct_attr.rename_all);
+            quote! {
                 #found_crate::property::PropertyInfo {
                     name: #name,
                     value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
                 },
-            })
+            }
         })
-        .collect::<syn::Result<TokenStream>>()?;
+        .collect::<Result<TokenStream, _>>()?;
     let cols = data
         .fields
         .iter()
