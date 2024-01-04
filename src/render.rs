@@ -1,8 +1,16 @@
+use std::collections::BTreeSet;
+
+use axum::extract::State;
 use convert_case::{Case, Casing};
 use maud::{html, Markup, DOCTYPE};
 use uuid::Uuid;
 
 use crate::{property::EnumVariant, Entity};
+
+#[derive(Clone)]
+pub struct Context {
+    pub(crate) names_plural: BTreeSet<&'static str>,
+}
 
 #[non_exhaustive]
 pub struct FormRenderContext<'a> {
@@ -32,7 +40,7 @@ pub fn sidebar<'a>(names: impl IntoIterator<Item = &'a str>, active: &str) -> Ma
     html! {
         nav class="cms-sidebar" {
             @for name in names {
-                a href=(&format!("/{name}")) class=[(name == active).then_some("active")] {
+                a href=(&format!("/{}", name.to_case(Case::Kebab))) class=[(name == active).then_some("active")] {
                     (name.to_case(Case::Title))
                 }
             }
@@ -57,6 +65,13 @@ pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
             }
         }
     }
+}
+
+pub async fn add_entity_page<E: Entity>(ctx: State<Context>) -> Markup {
+    document(html! {
+        (sidebar(ctx.names_plural.clone(), E::name_plural()))
+        (add_entity::<E>(None))
+    })
 }
 
 pub fn property_enum<'a>(
