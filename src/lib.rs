@@ -40,6 +40,7 @@ pub use entity::Entity;
 pub use property::Property;
 
 pub mod app;
+mod endpoints;
 pub mod entity;
 pub mod property;
 pub mod render;

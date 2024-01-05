@@ -1,10 +1,10 @@
-use axum::{routing::get, Router};
+use axum::{routing::post, Router};
 use convert_case::{Case, Casing};
 use generic_array::{ArrayLength, GenericArray};
 use maud::Markup;
 use serde::{Deserialize, Serialize};
 
-use crate::{property::PropertyInfo, render};
+use crate::{endpoints, property::PropertyInfo, render};
 
 pub use derived_cms_derive::Entity;
 
@@ -20,10 +20,10 @@ where
     fn render_column_values(&self) -> GenericArray<Markup, Self::NumberOfColumns>;
     fn properties(value: Option<&Self>) -> impl IntoIterator<Item = PropertyInfo<'_>>;
 
-    fn routes() -> Router<render::Context> {
+    fn routes<S: render::ContextTrait + 'static>() -> Router<S> {
         Router::new().route(
             &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
-            get(render::add_entity_page::<Self>),
+            post(endpoints::post_add_entity::<Self, S>),
         )
     }
 }

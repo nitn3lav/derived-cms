@@ -1,16 +1,53 @@
 use std::collections::BTreeSet;
 
-use axum::extract::State;
+use axum::extract::{FromRef, State};
 use convert_case::{Case, Casing};
 use maud::{html, Markup, DOCTYPE};
+use sqlx::Database;
 use uuid::Uuid;
 
 use crate::{property::EnumVariant, Entity};
 
-#[derive(Clone)]
-pub struct Context {
-    pub(crate) names_plural: BTreeSet<&'static str>,
+pub trait ContextTrait: Clone + Send + Sync {
+    fn db(&self) -> &sqlx::Pool<impl Database>;
+    fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
+    fn ext(&self) -> &impl ContextExt<Self>;
 }
+
+#[derive(Debug)]
+pub struct Context<DB: Database, T: ContextExt<Self>> {
+    pub(crate) names_plural: BTreeSet<&'static str>,
+    pub(crate) db: sqlx::Pool<DB>,
+    pub(crate) ext: T,
+}
+impl<DB: Database, E: ContextExt<Self>> Clone for Context<DB, E> {
+    fn clone(&self) -> Self {
+        Self {
+            names_plural: self.names_plural.clone(),
+            db: self.db.clone(),
+            ext: self.ext.clone(),
+        }
+    }
+}
+impl<DB: Database, E: ContextExt<Self>> ContextTrait for Context<DB, E> {
+    fn db(&self) -> &sqlx::Pool<impl Database> {
+        &self.db
+    }
+    fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>> {
+        self.names_plural.iter()
+    }
+    fn ext(&self) -> &impl ContextExt<Self> {
+        &self.ext
+    }
+}
+
+impl<DB: Database> FromRef<Context<DB, ()>> for () {
+    fn from_ref(_input: &Context<DB, ()>) -> Self {}
+}
+
+pub trait ContextExt<Ctx>: FromRef<Ctx> + Clone + Send + Sync {}
+
+impl<Ctx, T: Send + Sync + 'static> ContextExt<Ctx> for T where T: FromRef<Ctx> + Clone {}
 
 #[non_exhaustive]
 pub struct FormRenderContext<'a> {
@@ -36,10 +73,11 @@ pub fn document(body: Markup) -> Markup {
     }
 }
 
-pub fn sidebar<'a>(names: impl IntoIterator<Item = &'a str>, active: &str) -> Markup {
+pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -> Markup {
     html! {
         nav class="cms-sidebar" {
             @for name in names {
+                @let name = name.as_ref();
                 a href=(&format!("/{}", name.to_case(Case::Kebab))) class=[(name == active).then_some("active")] {
                     (name.to_case(Case::Title))
                 }
@@ -67,9 +105,16 @@ pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
     }
 }
 
-pub async fn add_entity_page<E: Entity>(ctx: State<Context>) -> Markup {
+pub async fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
     document(html! {
-        (sidebar(ctx.names_plural.clone(), E::name_plural()))
+        (sidebar(ctx.names_plural(), E::name_plural()))
+        (add_entity::<E>(None))
+    })
+}
+
+pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
+    document(html! {
+        (sidebar(ctx.names_plural(), E::name_plural()))
         (add_entity::<E>(None))
     })
 }
