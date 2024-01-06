@@ -44,7 +44,7 @@ where
     DB: Database,
     S: render::ContextExt<render::Context<DB, S>> + 'static,
 {
-    pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
+    pub fn entity<E: Entity<DB> + Send + Sync>(mut self) -> Self {
         self.names_plural.insert(E::name_plural());
         self.router = self.router.merge(E::routes::<render::Context<DB, S>>());
         self

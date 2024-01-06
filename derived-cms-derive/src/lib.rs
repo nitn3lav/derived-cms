@@ -1,22 +1,25 @@
+use std::borrow::Cow;
+
 use convert_case::{Case, Casing};
 use darling::{FromAttributes, FromDeriveInput, FromField, FromMeta, FromVariant};
-use itertools::Itertools;
 use proc_macro2::{Ident, Span, TokenStream};
 use proc_macro_crate::{crate_name, FoundCrate};
 use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput};
+use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Type};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
 struct EntityStructOptions {
     rename: Option<String>,
     rename_all: Option<RenameAll>,
+    table: Option<String>,
 }
 
 #[derive(Debug, FromField)]
 #[darling(attributes(cms, serde))]
 struct EntityFieldOptions {
     ident: Option<Ident>,
+    ty: Type,
     /// Do not display this field in list columns
     #[darling(default)]
     skip_in_column: bool,
@@ -106,40 +109,40 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
     let ident = &input.ident;
 
     let struct_attr = EntityStructOptions::from_attributes(&input.attrs)?;
-    let name = renamed_name(ident.to_string(), struct_attr.rename, Some(Case::Snake));
+    let name = renamed_name(
+        ident.to_string(),
+        struct_attr.rename.as_ref(),
+        Some(Case::Snake),
+    );
     let name_plural = format!("{name}s");
+    let table = renamed_name(
+        name_plural.clone(),
+        struct_attr.table.as_ref(),
+        Some(Case::Snake),
+    );
 
-    let properties = data
+    let fields = data
         .fields
         .iter()
         .map(|f| EntityFieldOptions::from_field(f))
-        .filter_ok(|f| !f.skip_input)
-        .map_ok(|f| {
-            let Some(ident) = &f.ident else {
-                return quote!(compile_error!(
-                    "`Entity` can only be derived for `struct`s with named fields"
-                ));
-            };
-            let name = renamed_name(ident.to_string(), f.rename, struct_attr.rename_all);
-            quote! {
-                #found_crate::property::PropertyInfo {
-                    name: #name,
-                    value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
-                },
-            }
-        })
-        .collect::<Result<TokenStream, _>>()?;
-    let cols = data
-        .fields
-        .iter()
-        .map(|field| EntityFieldOptions::from_field(field).map(|attr| (field, attr)))
-        .filter_ok(|(_field, attr)| !attr.skip_in_column)
         .collect::<Result<Vec<_>, _>>()?;
+
+    let cols = fields
+        .iter()
+        .clone()
+        .filter(|attr| !attr.skip_in_column)
+        .collect::<Vec<_>>();
     let number_of_columns = Ident::new(&format!("U{}", cols.len()), Span::call_site());
+
+    let properties = properties_fn(&fields, &struct_attr);
+    let (db_insert, where_clauses) = insert(&ident, &table, &fields)?;
 
     Ok(quote! {
         #[automatically_derived]
-        impl #found_crate::Entity for #ident {
+        impl<DB: #found_crate::derive::sqlx::Database> #found_crate::Entity<DB> for #ident
+        where
+            #where_clauses
+        {
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
             fn name() -> &'static ::std::primitive::str {
@@ -153,13 +156,108 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
                 todo!()
             }
 
-            fn properties<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::property::PropertyInfo<'a>> {
-                [
-                    #properties
-                ]
-            }
+            #properties
         }
+        #db_insert
     })
+}
+
+fn properties_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
+    let found_crate = found_crate();
+    let properties = fields
+        .into_iter()
+        .filter(|f| !f.skip_input)
+        .map(|f| {
+            let Some(ident) = &f.ident else {
+                return quote!(compile_error!(
+                    "`Entity` can only be derived for `struct`s with named fields"
+                ));
+            };
+            let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+            quote! {
+                #found_crate::property::PropertyInfo {
+                    name: #name,
+                    value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
+                },
+            }
+        })
+        .collect::<TokenStream>();
+    quote! {
+        fn properties<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::property::PropertyInfo<'a>> {
+            [#properties]
+        }
+    }
+}
+
+fn insert(
+    ident: &Ident,
+    table: &str,
+    fields: &[EntityFieldOptions],
+) -> syn::Result<(TokenStream, TokenStream)> {
+    let found_crate = found_crate();
+    let where_clauses = fields
+        .iter()
+        .map(|f| {
+            let ty = &f.ty;
+            quote! {
+                #ty: Type<DB>,
+                for<'e> #ty: Encode<'e, DB>,
+            }
+        })
+        .collect::<TokenStream>();
+    let idents = fields
+        .into_iter()
+        .map(|f| {
+            let Some(ident) = &f.ident else {
+                return Err(syn::Error::new(
+                    Span::call_site(),
+                    "`Entity` can only be derived for `struct`s with named fields",
+                ));
+            };
+            Ok(ident)
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
+    let names = idents
+        .iter()
+        .map(|ident| ident.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let values = idents
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!("${i}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let query = format!("INSERT INTO {table} ({names}) VALUES ({values})");
+    let bind = idents
+        .iter()
+        .map(|ident| {
+            quote! {.bind(&self.#ident)}
+        })
+        .collect::<TokenStream>();
+
+    Ok((
+        quote! {
+            #[automatically_derived]
+            impl<DB: #found_crate::derive::sqlx::Database> #found_crate::entity::Insert<DB> for #ident
+            where
+                #where_clauses
+            {
+                async fn insert<'c, E>(&self, db: E) -> #found_crate::derive::sqlx::Result<()>
+                where
+                    E: #found_crate::derive::sqlx::Executor<'c, Database = DB>,
+                    for<'q> <DB as #found_crate::derive::sqlx::database::HasArguments<'q>>::Arguments: #found_crate::derive::sqlx::IntoArguments<'q, DB>,
+                {
+                    #found_crate::derive::sqlx::query(#query)
+                        #bind
+                        .execute(db)
+                        .await?;
+                    #found_crate::derive::sqlx::Result::Ok(())
+                }
+            }
+        },
+        where_clauses,
+    ))
 }
 
 #[proc_macro_derive(Property, attributes(cms))]
@@ -181,10 +279,14 @@ fn derive_property_struct(_input: &DeriveInput, _data: &DataStruct) -> syn::Resu
     todo!()
 }
 
-fn renamed_name(s: String, rename: Option<String>, rename_all: Option<impl Into<Case>>) -> String {
-    rename.unwrap_or_else(|| match rename_all {
-        Some(case) => s.to_case(case.into()),
-        None => s,
+fn renamed_name<'a>(
+    s: String,
+    rename: Option<impl Into<Cow<'a, str>>>,
+    rename_all: Option<impl Into<Case>>,
+) -> Cow<'a, str> {
+    rename.map(Into::into).unwrap_or_else(|| match rename_all {
+        Some(case) => s.to_case(case.into()).into(),
+        None => s.into(),
     })
 }
 

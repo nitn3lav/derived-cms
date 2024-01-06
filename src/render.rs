@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::{property::EnumVariant, Entity};
 
-pub trait ContextTrait: Clone + Send + Sync {
-    fn db(&self) -> &sqlx::Pool<impl Database>;
+pub trait ContextTrait<DB: Database>: Clone + Send + Sync {
+    fn db(&self) -> &sqlx::Pool<DB>;
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
     fn ext(&self) -> &impl ContextExt<Self>;
 }
@@ -29,8 +29,8 @@ impl<DB: Database, E: ContextExt<Self>> Clone for Context<DB, E> {
         }
     }
 }
-impl<DB: Database, E: ContextExt<Self>> ContextTrait for Context<DB, E> {
-    fn db(&self) -> &sqlx::Pool<impl Database> {
+impl<DB: Database, E: ContextExt<Self>> ContextTrait<DB> for Context<DB, E> {
+    fn db(&self) -> &sqlx::Pool<DB> {
         &self.db
     }
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>> {
@@ -86,7 +86,7 @@ pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -
     }
 }
 
-pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
+pub fn add_entity<E: Entity<DB>, DB: Database>(value: Option<&E>) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
@@ -105,17 +105,19 @@ pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
     }
 }
 
-pub async fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
+pub async fn entity_list_page<E: Entity<DB>, DB: Database>(
+    ctx: State<impl ContextTrait<DB>>,
+) -> Markup {
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
-        (add_entity::<E>(None))
+        (add_entity::<E, DB>(None))
     })
 }
 
-pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
+pub fn add_entity_page<E: Entity<DB>, DB: Database>(ctx: State<impl ContextTrait<DB>>) -> Markup {
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
-        (add_entity::<E>(None))
+        (add_entity::<E, DB>(None))
     })
 }
 
