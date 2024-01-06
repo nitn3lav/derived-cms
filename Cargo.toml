@@ -20,6 +20,7 @@ maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version 
     "axum",
 ] }
 mime_guess = "2.0.4"
+ormlite = { git = "https://github.com/nitn3lav/ormlite" }
 regex = "1.10.2"
 serde = { version = "1.0.193", features = ["derive"] }
 sqlx = { version = "0.7.3", features = ["sqlite", "postgres", "mysql"] }

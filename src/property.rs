@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use chrono::{DateTime, TimeZone};
 use derive_more::{Display, From, FromStr, Into};
 use maud::{html, Markup, PreEscaped};
@@ -10,7 +12,7 @@ pub use derived_cms_derive::Property;
 use crate::render::FormRenderContext;
 
 /// A property of an entity or nested within another property that can be input in a HTML form
-pub trait Property {
+pub trait Property: Debug {
     fn render_input(
         value: Option<&Self>,
         name: &str,
@@ -20,7 +22,7 @@ pub trait Property {
 }
 
 /// object safe trait that is automatically implemented for [`Option<T>`] where `T` implements [`Property`]
-pub trait DynProperty {
+pub trait DynProperty: Debug {
     fn render_input(
         &self,
         name: &str,
@@ -44,11 +46,13 @@ where
 }
 
 /// a dynamic reference to a property and it's name
+#[derive(Debug)]
 pub struct PropertyInfo<'a> {
     pub name: &'a str,
     pub value: Box<dyn DynProperty + 'a>,
 }
 
+#[derive(Debug)]
 pub struct EnumVariant<'a> {
     pub name: &'a str,
     pub value: &'a str,
@@ -81,13 +85,13 @@ where
     }
 }
 
-impl<DB: Database> sqlx::Encode<'static, DB> for Text
+impl<'r, DB: Database> sqlx::Encode<'r, DB> for Text
 where
-    for<'a> String: sqlx::Encode<'a, DB>,
+    String: sqlx::Encode<'r, DB>,
 {
     fn encode_by_ref(
         &self,
-        buf: &mut <DB as sqlx::database::HasArguments<'_>>::ArgumentBuffer,
+        buf: &mut <DB as sqlx::database::HasArguments<'r>>::ArgumentBuffer,
     ) -> sqlx::encode::IsNull {
         sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
@@ -258,5 +262,16 @@ function setIndex(el, i) {{
                 "#).trim()))}
             }
         }
+    }
+}
+
+impl<T: Property> Property for ormlite::types::Json<T> {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        ctx: &FormRenderContext,
+    ) -> PreEscaped<String> {
+        T::render_input(value.map(|v| &v.0), name, name_human, ctx)
     }
 }
