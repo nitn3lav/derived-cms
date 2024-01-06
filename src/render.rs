@@ -95,7 +95,7 @@ pub fn add_entity<E: Entity<DB>, DB: Database>(value: Option<&E>) -> Markup {
             form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
                 @for f in Entity::properties(value) {
                     div class="cms-prop-container" {
-                        label for=(f.name) class="cms-prop-label" {(f.name)}
+                        label class="cms-prop-label" {(f.name)}
                         (f.value.render_input(f.name, f.name, &ctx))
                     }
                 }
@@ -151,9 +151,9 @@ pub fn property_enum<'a>(
                 } else {
                     "cms-enum-container"
                 };
-                div class=(class) {
+                fieldset class=(class) disabled[i != selected] {
                     @if let Some(ref data) = variant.content {
-                        (data.value.render_input(variant.name, &variant.value.to_case(Case::Title), ctx))
+                        (data.value.render_input(data.name, &variant.value.to_case(Case::Title), ctx))
                     }
                 }
             }

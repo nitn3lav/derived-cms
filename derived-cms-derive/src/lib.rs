@@ -115,11 +115,6 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
         Some(Case::Snake),
     );
     let name_plural = format!("{name}s");
-    let table = renamed_name(
-        name_plural.clone(),
-        struct_attr.table.as_ref(),
-        Some(Case::Snake),
-    );
 
     let fields = data
         .fields
@@ -135,13 +130,12 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
     let number_of_columns = Ident::new(&format!("U{}", cols.len()), Span::call_site());
 
     let properties = properties_fn(&fields, &struct_attr);
-    let (db_insert, where_clauses) = insert(&ident, &table, &fields)?;
 
     Ok(quote! {
         #[automatically_derived]
         impl<DB: #found_crate::derive::sqlx::Database> #found_crate::Entity<DB> for #ident
         where
-            #where_clauses
+            Self: ::ormlite::Model<DB>
         {
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
@@ -158,7 +152,6 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
 
             #properties
         }
-        #db_insert
     })
 }
 
@@ -187,77 +180,6 @@ fn properties_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOption
             [#properties]
         }
     }
-}
-
-fn insert(
-    ident: &Ident,
-    table: &str,
-    fields: &[EntityFieldOptions],
-) -> syn::Result<(TokenStream, TokenStream)> {
-    let found_crate = found_crate();
-    let where_clauses = fields
-        .iter()
-        .map(|f| {
-            let ty = &f.ty;
-            quote! {
-                #ty: Type<DB>,
-                for<'e> #ty: Encode<'e, DB>,
-            }
-        })
-        .collect::<TokenStream>();
-    let idents = fields
-        .into_iter()
-        .map(|f| {
-            let Some(ident) = &f.ident else {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "`Entity` can only be derived for `struct`s with named fields",
-                ));
-            };
-            Ok(ident)
-        })
-        .collect::<syn::Result<Vec<_>>>()?;
-    let names = idents
-        .iter()
-        .map(|ident| ident.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let values = idents
-        .iter()
-        .enumerate()
-        .map(|(i, _)| format!("${i}"))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let query = format!("INSERT INTO {table} ({names}) VALUES ({values})");
-    let bind = idents
-        .iter()
-        .map(|ident| {
-            quote! {.bind(&self.#ident)}
-        })
-        .collect::<TokenStream>();
-
-    Ok((
-        quote! {
-            #[automatically_derived]
-            impl<DB: #found_crate::derive::sqlx::Database> #found_crate::entity::Insert<DB> for #ident
-            where
-                #where_clauses
-            {
-                async fn insert<'c, E>(&self, db: E) -> #found_crate::derive::sqlx::Result<()>
-                where
-                    E: #found_crate::derive::sqlx::Executor<'c, Database = DB>,
-                    for<'q> <DB as #found_crate::derive::sqlx::database::HasArguments<'q>>::Arguments: #found_crate::derive::sqlx::IntoArguments<'q, DB>,
-                {
-                    #found_crate::derive::sqlx::query(#query)
-                        #bind
-                        .execute(db)
-                        .await?;
-                    #found_crate::derive::sqlx::Result::Ok(())
-                }
-            }
-        },
-        where_clauses,
-    ))
 }
 
 #[proc_macro_derive(Property, attributes(cms))]
