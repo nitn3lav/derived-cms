@@ -5,21 +5,19 @@ use darling::{FromAttributes, FromDeriveInput, FromField, FromMeta, FromVariant}
 use proc_macro2::{Ident, Span, TokenStream};
 use proc_macro_crate::{crate_name, FoundCrate};
 use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field, Type};
+use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
 struct EntityStructOptions {
     rename: Option<String>,
     rename_all: Option<RenameAll>,
-    table: Option<String>,
 }
 
 #[derive(Debug, FromField)]
 #[darling(attributes(cms, serde))]
 struct EntityFieldOptions {
     ident: Option<Ident>,
-    ty: Type,
     /// Do not display this field in list columns
     #[darling(default)]
     skip_in_column: bool,
@@ -160,9 +158,9 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
 
     Ok(quote! {
         #[automatically_derived]
-        impl<DB: #found_crate::derive::sqlx::Database> #found_crate::Entity<DB> for #ident
+        impl<DB: #found_crate::derive::ormlite::Database> #found_crate::Entity<DB> for #ident
         where
-            Self: ::ormlite::Model<DB>
+            Self: #found_crate::derive::ormlite::Model<DB>
         {
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 

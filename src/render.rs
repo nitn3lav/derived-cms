@@ -161,3 +161,18 @@ pub fn property_enum<'a>(
         script src="/js/enum.js" {}
     }
 }
+
+pub fn error_page(title: &str, description: &str) -> Markup {
+    document(html! {
+        main {
+            h1 {(title)}
+            p {
+                @for line in description.split("\n") {
+                    (line)
+                    br;
+                }
+            }
+            a href="javascript:history.back()" {"Go Back"}
+        }
+    })
+}

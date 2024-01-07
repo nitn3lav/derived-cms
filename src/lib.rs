@@ -49,5 +49,5 @@ pub mod render;
 pub mod derive {
     pub use generic_array;
     pub use maud;
-    pub use sqlx;
+    pub use ormlite;
 }

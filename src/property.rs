@@ -265,7 +265,8 @@ function setIndex(el, i) {{
     }
 }
 
-impl<T: Property> Property for ormlite::types::Json<T> {
+#[cfg(feature = "json")]
+impl<T: Property> Property for sqlx::types::Json<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,

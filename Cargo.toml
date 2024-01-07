@@ -19,11 +19,17 @@ maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version 
     "axum",
 ] }
 mime_guess = "2.0.4"
-ormlite = { git = "https://github.com/nitn3lav/ormlite" }
+ormlite = { git = "https://github.com/nitn3lav/ormlite", branch = "main" }
 regex = "1.10.2"
 serde = { version = "1.0.193", features = ["derive"] }
-sqlx = { version = "0.7.3", features = ["sqlite", "postgres", "mysql"] }
+serde_json = "1.0.111"
+serde_qs = { version = "0.12.0", features = ["axum"] }
+sqlx = { version = "0.7.3" }
+tracing = "0.1.40"
 uuid = { version = "1.6.1", features = ["v4"] }
 
 [dev-dependencies]
 tokio = { version = "1.35.1", features = ["full"] }
+
+[features]
+json = ["sqlx/json"]

@@ -1,6 +1,7 @@
-use std::future::Future;
-
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use convert_case::{Case, Casing};
 use generic_array::{ArrayLength, GenericArray};
 use maud::Markup;
@@ -26,9 +27,14 @@ where
     fn properties(value: Option<&Self>) -> impl IntoIterator<Item = PropertyInfo<'_>>;
 
     fn routes<S: render::ContextTrait<DB> + 'static>() -> Router<S> {
-        Router::new().route(
-            &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
-            get(endpoints::get_add_entity::<Self, DB, S>),
-        )
+        Router::new()
+            .route(
+                &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
+                post(endpoints::post_add_entity::<Self, DB, S>),
+            )
+            .route(
+                &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
+                get(endpoints::get_add_entity::<Self, DB, S>),
+            )
     }
 }
