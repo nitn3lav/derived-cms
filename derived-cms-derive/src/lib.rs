@@ -5,7 +5,7 @@ use darling::{FromAttributes, FromDeriveInput, FromField, FromMeta, FromVariant}
 use proc_macro2::{Ident, Span, TokenStream};
 use proc_macro_crate::{crate_name, FoundCrate};
 use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Type};
+use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field, Type};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
@@ -26,10 +26,37 @@ struct EntityFieldOptions {
     #[darling(default)]
     skip_input: bool,
     rename: Option<String>,
+}
 
-    // TODO: find a solution that doesn't require specifying all serde args
-    #[darling(default)]
-    default: bool,
+impl EntityFieldOptions {
+    fn parse(f: &Field) -> Result<Self, darling::Error> {
+        // TODO: allow overwriting options from serde with #[cms(...)]
+        let attrs = f
+            .attrs
+            .to_owned()
+            .into_iter()
+            // filter serde fields
+            .filter(|a| {
+                let path = a.path();
+                if !path.is_ident(&Ident::new("serde", Span::call_site())) {
+                    return true;
+                }
+                if let syn::Meta::NameValue(v) = &a.meta {
+                    return v.path.is_ident(&Ident::new("rename", Span::call_site()));
+                }
+                false
+            })
+            .collect();
+        let f = Field {
+            attrs,
+            vis: f.vis.clone(),
+            mutability: f.mutability.clone(),
+            ident: f.ident.clone(),
+            colon_token: f.colon_token,
+            ty: f.ty.clone(),
+        };
+        Self::from_field(&f)
+    }
 }
 
 #[derive(Debug, FromDeriveInput)]
@@ -119,7 +146,7 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
     let fields = data
         .fields
         .iter()
-        .map(|f| EntityFieldOptions::from_field(f))
+        .map(EntityFieldOptions::parse)
         .collect::<Result<Vec<_>, _>>()?;
 
     let cols = fields
