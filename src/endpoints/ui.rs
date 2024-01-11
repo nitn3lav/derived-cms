@@ -77,11 +77,10 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
         serde_json::to_string(&e).unwrap()
     );
 
-    // TODO: id
     let uri = &format!(
         "/{}/{}",
         E::name().to_case(Case::Kebab),
-        urlencoding::encode("id")
+        urlencoding::encode(&e.id().to_string())
     );
     Ok(Redirect::to(uri))
 }

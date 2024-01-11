@@ -121,7 +121,11 @@ pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]
                 @for e in entities {
                     tr {
                         @for c in e.column_values() {
-                            td onclick=(format!("window.location = \"/{}/{}\"", E::name().to_case(Case::Kebab), urlencoding::encode("id"))) {
+                            td onclick=(format!(
+                                "window.location = \"/{}/{}\"",
+                                E::name().to_case(Case::Kebab),
+                                urlencoding::encode(&e.id().to_string()))
+                            ) {
                                 (c.render())
                             }
                         }

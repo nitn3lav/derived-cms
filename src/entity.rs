@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use axum::{
     routing::{get, post},
     Router,
@@ -24,6 +26,7 @@ pub trait Entity:
 {
     /// should usually be an UUID
     type Id: for<'de> Deserialize<'de>
+        + Display
         + Serialize
         + sqlx::Type<DB>
         + for<'q> sqlx::Encode<'q, DB>
@@ -33,6 +36,8 @@ pub trait Entity:
 
     fn name() -> &'static str;
     fn name_plural() -> &'static str;
+
+    fn id(&self) -> &Self::Id;
 
     fn column_names() -> GenericArray<&'static str, Self::NumberOfColumns>;
     fn column_values<'a>(&'a self) -> GenericArray<&'a dyn Column, Self::NumberOfColumns>;

@@ -150,10 +150,18 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
         .map(EntityFieldOptions::parse)
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut id_iter = fields.iter().filter(|attr| attr.id).map(|attr| &attr.ty);
-    let Some(id) = id_iter.next() else {
+    let mut id_iter = fields
+        .iter()
+        .filter(|attr| attr.id)
+        .map(|attr| (&attr.ident, &attr.ty));
+    let Some((id_ident, id_type)) = id_iter.next() else {
         return Ok(quote!(compile_error!(
             "an Entity must have exactly one id. help: add `#[cms(id)]` to your id field"
+        )));
+    };
+    let Some(id_ident) = id_ident else {
+        return Ok(quote!(compile_error!(
+            "`Entity` can only be derived for `struct`s with named fields"
         )));
     };
     if let Some(_) = id_iter.next() {
@@ -178,7 +186,7 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
         where
             Self: #found_crate::derive::ormlite::Model<#found_crate::DB>
         {
-            type Id = #id;
+            type Id = #id_type;
 
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
@@ -187,6 +195,10 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
             }
             fn name_plural() -> &'static ::std::primitive::str {
                 #name_plural
+            }
+
+            fn id(&self) -> &#id_type {
+                &self.#id_ident
             }
 
             #column_names
