@@ -18,11 +18,16 @@ pub trait Entity:
     + for<'r> sqlx::FromRow<'r, <DB as sqlx::Database>::Row>
     + Send
     + Sync
+    + Clone
     + Unpin
     + 'static
 {
     /// should usually be an UUID
-    type Id: for<'de> Deserialize<'de> + Serialize + Default + Send;
+    type Id: for<'de> Deserialize<'de>
+        + Serialize
+        + sqlx::Type<DB>
+        + for<'q> sqlx::Encode<'q, DB>
+        + Send;
 
     type NumberOfColumns: ArrayLength;
 
@@ -34,18 +39,41 @@ pub trait Entity:
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 
     fn routes<S: render::ContextTrait + 'static>() -> Router<S> {
+        let name = Self::name().to_case(Case::Kebab);
+        let name = urlencoding::encode(&name);
+        let name_pl = Self::name_plural().to_case(Case::Kebab);
+        let name_pl = urlencoding::encode(&name_pl);
+
         Router::new()
+            // API
             .route(
-                &format!("/{}", Self::name_plural().to_case(Case::Kebab)),
-                get(endpoints::get_entities::<Self, S>),
+                &format!("/api/v1/{name_pl}"),
+                get(endpoints::api::get_entities::<Self, S>),
             )
             .route(
-                &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
-                get(endpoints::get_add_entity::<Self, S>),
+                &format!("/api/v1/{name}/:id"),
+                get(endpoints::api::get_entity::<Self, S>),
             )
             .route(
-                &format!("/{}/add", Self::name_plural().to_case(Case::Kebab)),
-                post(endpoints::post_add_entity::<Self, S>),
+                &format!("/api/v1/{name_pl}"),
+                post(endpoints::api::post_entities::<Self, S>),
+            )
+            .route(
+                &format!("/api/v1/{name_pl}/:id"),
+                post(endpoints::api::post_entity::<Self, S>),
+            )
+            // UI
+            .route(
+                &format!("/{name_pl}"),
+                get(endpoints::ui::get_entities::<Self, S>),
+            )
+            .route(
+                &format!("/{name_pl}/add"),
+                get(endpoints::ui::get_add_entity::<Self, S>),
+            )
+            .route(
+                &format!("/{name_pl}/add"),
+                post(endpoints::ui::post_add_entity::<Self, S>),
             )
     }
 }

@@ -52,8 +52,7 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
     ctx: State<S>,
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, AppError> {
-    let db = ctx.db();
-    let x = serde_qs::Config::new(5, false)
+    let e = serde_qs::Config::new(5, false)
         .deserialize_bytes::<E>(&form)
         .map_err(|e| {
             AppError::new(
@@ -64,9 +63,9 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
     debug!(
         "Creating new {}: {}",
         E::name().to_case(Case::Title),
-        serde_json::to_string(&x).unwrap()
+        serde_json::to_string(&e).unwrap()
     );
-    let x: E = x.insert(db).await.map_err(|e| {
+    let e: E = e.insert(ctx.db()).await.map_err(|e| {
         AppError::new(
             format!("Failed to create new {}", E::name().to_case(Case::Title)),
             format!("Database error: {e}"),
@@ -75,7 +74,7 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
     debug!(
         "Created new {}: {}",
         E::name().to_case(Case::Title),
-        serde_json::to_string(&x).unwrap()
+        serde_json::to_string(&e).unwrap()
     );
 
     // TODO: id
