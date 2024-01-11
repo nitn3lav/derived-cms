@@ -33,3 +33,4 @@ Temporary Items
 /target
 
 /Cargo.lock
+/.cargo/config.toml
