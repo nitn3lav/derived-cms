@@ -10,6 +10,8 @@ use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field, Typ
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
 struct EntityStructOptions {
+    #[darling(default)]
+    hooks: bool,
     rename: Option<String>,
     rename_all: Option<RenameAll>,
 }
@@ -180,6 +182,15 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
     let column_names = column_names_fn(&fields, &struct_attr);
     let column_values = column_values_fn(&fields);
 
+    let hooks = if !struct_attr.hooks {
+        quote! {
+            #[automatically_derived]
+            impl #found_crate::EntityHooks for #ident {}
+        }
+    } else {
+        quote!()
+    };
+
     Ok(quote! {
         #[automatically_derived]
         impl #found_crate::Entity for #ident
@@ -205,6 +216,8 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
             #column_values
             #inputs
         }
+
+        #hooks
     })
 }
 

@@ -36,7 +36,7 @@ pub async fn get_entities<E: Entity, S: render::ContextTrait>(
     let r = E::select().fetch_all(ctx.db()).await.map_err(|e| {
         AppError::new(
             format!("Failed to list {}", E::name_plural().to_case(Case::Title)),
-            format!("Database error: {e}"),
+            format!("Database error: {e:#}"),
         )
     })?;
     Ok(render::entity_list_page(ctx, &r))
@@ -57,7 +57,7 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
         .map_err(|e| {
             AppError::new(
                 format!("Failed to create new {}", E::name().to_case(Case::Title)),
-                format!("Failed to parse form: {e}"),
+                format!("Failed to parse form: {e:#}"),
             )
         })?;
     debug!(
@@ -65,12 +65,23 @@ pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
         E::name().to_case(Case::Title),
         serde_json::to_string(&e).unwrap()
     );
-    let e: E = e.insert(ctx.db()).await.map_err(|e| {
-        AppError::new(
-            format!("Failed to create new {}", E::name().to_case(Case::Title)),
-            format!("Database error: {e}"),
-        )
-    })?;
+    let e = e
+        .on_create()
+        .await
+        .map_err(|e| {
+            AppError::new(
+                format!("Failed to create new {}", E::name().to_case(Case::Title)),
+                format!("{e:#}"),
+            )
+        })?
+        .insert(ctx.db())
+        .await
+        .map_err(|e| {
+            AppError::new(
+                format!("Failed to create new {}", E::name().to_case(Case::Title)),
+                format!("Database error: {e:#}"),
+            )
+        })?;
     debug!(
         "Created new {}: {}",
         E::name().to_case(Case::Title),

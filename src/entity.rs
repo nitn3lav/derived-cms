@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{convert::Infallible, error::Error, fmt::Display, future::Future};
 
 use axum::{
     routing::{get, post},
@@ -14,13 +14,13 @@ use crate::{column::Column, endpoints, input::InputInfo, render, DB};
 pub use derived_cms_derive::Entity;
 
 pub trait Entity:
-    for<'de> Deserialize<'de>
+    EntityHooks
+    + for<'de> Deserialize<'de>
     + Serialize
     + Model<DB>
     + for<'r> sqlx::FromRow<'r, <DB as sqlx::Database>::Row>
     + Send
     + Sync
-    + Clone
     + Unpin
     + 'static
 {
@@ -80,5 +80,17 @@ pub trait Entity:
                 &format!("/{name_pl}/add"),
                 post(endpoints::ui::post_add_entity::<Self, S>),
             )
+    }
+}
+
+pub trait EntityHooks: Send + Sized {
+    /// called before an [`Entity`] is inserted into the database
+    fn on_create(self) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
+        async { Result::<Self, Infallible>::Ok(self) }
+    }
+
+    /// called before an [`Entity`] is updated
+    fn on_update(self) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
+        async { Result::<Self, Infallible>::Ok(self) }
     }
 }

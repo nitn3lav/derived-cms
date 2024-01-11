@@ -267,6 +267,7 @@ impl<T: Input> Input for sqlx::types::Json<T> {
         T::render_input(value.map(|v| &v.0), name, name_human, ctx)
     }
 }
+#[cfg(feature = "json")]
 impl<T: Column> Column for sqlx::types::Json<T> {
     fn render(&self) -> Markup {
         self.0.render()

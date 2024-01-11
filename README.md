@@ -45,3 +45,41 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 ```
+
+## Hooks
+
+You can add hooks to be run before an entity is created or updated
+
+```rust
+use std::convert::Infallible;
+
+use chrono::{DateTime, Utc};
+use derived_cms::{App, Entity, EntityHooks, Input, property::{Markdown, Text}};
+use ormlite::{Model, sqlite::Sqlite, types::Json};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Deserialize, Serialize, Model, Entity)]
+#[cms(hooks)]
+struct Post {
+    #[cms(id, skip_input)]
+    #[ormlite(primary_key)]
+    #[serde(default = "uuid::Uuid::new_v4")]
+    id: Uuid,
+    title: Text,
+    date: DateTime<Utc>,
+    draft: bool,
+}
+
+impl EntityHooks for Post {
+    async fn on_create(self) -> Result<Self, Infallible> {
+        // do some stuff
+        Ok(self)
+    }
+
+    async fn on_update(self) -> Result<Self, Infallible> {
+        // do some stuff
+        Ok(self)
+    }
+}
+```

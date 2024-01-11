@@ -27,7 +27,7 @@ impl<T: Input> DynInput for Option<&T> {
     }
 }
 
-/// a dynamic reference to a [`PropertyInput`] and it's name
+/// a dynamic reference to an [`Input`] and it's name
 #[derive(Debug)]
 pub struct InputInfo<'a> {
     pub name: &'a str,
