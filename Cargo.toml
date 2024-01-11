@@ -9,6 +9,7 @@ license = "MPL-2.0"
 
 [dependencies]
 axum = "0.7.3"
+cfg-if = "1.0.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
 derive_more = "0.99.17"
@@ -19,24 +20,25 @@ maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version 
     "axum",
 ] }
 mime_guess = "2.0.4"
-ormlite = { git = "https://github.com/nitn3lav/ormlite", branch = "main" }
+ormlite = { version = "0.18.0", features = ["uuid", "chrono", "json"] }
 regex = "1.10.2"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.111"
 serde_qs = { version = "0.12.0", features = ["axum"] }
 sqlx = "0.7.3"
+sqlx-core = "0.7.3"
 tracing = "0.1.40"
+urlencoding = "2.1.3"
 uuid = { version = "1.6.1", features = ["v4"] }
 
 [dev-dependencies]
 tokio = { version = "1.35.1", features = ["full"] }
-ormlite = { git = "https://github.com/nitn3lav/ormlite", branch = "main", features = [
-    "chrono",
-    "json",
-    "sqlite",
-    "uuid",
-] }
 uuid = { version = "1.6.1", features = ["serde"] }
 
 [features]
-json = ["sqlx/json"]
+json = ["ormlite/json"]
+sqlite = ["ormlite/sqlite"]
+postgres = ["ormlite/postgres"]
+
+[patch.crates-io]
+ormlite = { git = "https://github.com/kurtbuilds/ormlite", branch = "master" }

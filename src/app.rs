@@ -5,58 +5,52 @@ use axum::{
     routing::get,
     Router,
 };
-
 use include_dir::{include_dir, Dir, DirEntry};
-use sqlx::Database;
 
-use crate::{entity::Entity, render};
+use crate::{entity::Entity, render, DB};
 
 static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 
 /// build an [`axum::Router`] with all routes required for API and admin interface
 #[derive(Clone, Debug)]
-pub struct App<DB, S, E>
+pub struct App<S, E>
 where
-    DB: Database,
-    S: render::ContextExt<render::Context<DB, S>>,
+    S: render::ContextExt<render::Context<S>>,
 {
-    router: Router<render::Context<DB, S>>,
+    router: Router<render::Context<S>>,
     names_plural: BTreeSet<&'static str>,
     state_ext: E,
 }
 
-impl<DB, S> App<DB, S, ()>
+impl<S> App<S, ()>
 where
-    DB: Database,
-    S: render::ContextExt<render::Context<DB, S>> + 'static,
+    S: render::ContextExt<render::Context<S>> + 'static,
 {
     pub fn new() -> Self {
         Self {
-            router: Router::<render::Context<DB, S>>::new(),
+            router: Router::new(),
             names_plural: Default::default(),
             state_ext: Default::default(),
         }
     }
 }
 
-impl<DB, S, SE> App<DB, S, SE>
+impl<S, SE> App<S, SE>
 where
-    DB: Database,
-    S: render::ContextExt<render::Context<DB, S>> + 'static,
+    S: render::ContextExt<render::Context<S>> + 'static,
 {
-    pub fn entity<E: Entity<DB> + Send + Sync>(mut self) -> Self {
+    pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
         self.names_plural.insert(E::name_plural());
-        self.router = self.router.merge(E::routes::<render::Context<DB, S>>());
+        self.router = self.router.merge(E::routes::<render::Context<S>>());
         self
     }
 }
 
-impl<DB, S, E> App<DB, S, E>
+impl<S, E> App<S, E>
 where
-    DB: Database,
-    S: render::ContextExt<render::Context<DB, S>> + 'static,
+    S: render::ContextExt<render::Context<S>> + 'static,
 {
-    pub fn with_state(self, data: S) -> App<DB, S, S> {
+    pub fn with_state(self, data: S) -> App<S, S> {
         App {
             router: self.router,
             names_plural: self.names_plural,
@@ -65,10 +59,9 @@ where
     }
 }
 
-impl<DB, S> App<DB, S, S>
+impl<S> App<S, S>
 where
-    DB: Database,
-    S: render::ContextExt<render::Context<DB, S>> + 'static,
+    S: render::ContextExt<render::Context<S>> + 'static,
 {
     pub fn build(self, db: sqlx::Pool<DB>) -> Router {
         self.router

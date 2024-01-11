@@ -6,7 +6,7 @@
 //!
 //! ```no_run
 //! use chrono::{DateTime, Utc};
-//! use derived_cms::{App, Entity, Property, property::{Markdown, Text}};
+//! use derived_cms::{App, Entity, Input, property::{Markdown, Text}};
 //! use ormlite::{Model, sqlite::Sqlite, types::Json};
 //! use serde::{Deserialize, Serialize};
 //! use uuid::Uuid;
@@ -19,12 +19,13 @@
 //!     id: Uuid,
 //!     title: Text,
 //!     date: DateTime<Utc>,
+//!     #[cms(skip_column)]
 //!     #[serde(default)]
 //!     content: Json<Vec<Block>>,
 //!     draft: bool,
 //! }
 //!
-//! #[derive(Debug, Deserialize, Serialize, Property)]
+//! #[derive(Debug, Deserialize, Serialize, Input)]
 //! #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 //! pub enum Block {
 //!     Separator,
@@ -43,12 +44,15 @@
 //! ```
 
 pub use app::App;
+pub use column::Column;
 pub use entity::Entity;
-pub use property::Property;
+pub use input::Input;
 
 pub mod app;
+pub mod column;
 mod endpoints;
 pub mod entity;
+pub mod input;
 pub mod property;
 pub mod render;
 
@@ -58,3 +62,8 @@ pub mod derive {
     pub use maud;
     pub use ormlite;
 }
+
+#[cfg(feature = "sqlite")]
+pub type DB = sqlx::Sqlite;
+#[cfg(feature = "postgres")]
+pub type DB = sqlx::Postgres;

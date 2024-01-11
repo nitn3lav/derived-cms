@@ -4,16 +4,9 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use convert_case::{Case, Casing};
-use sqlx::Database;
 use tracing::{debug, error};
 
 use crate::{render, Entity};
-
-pub async fn get_add_entity<E: Entity<DB>, DB: Database, S: render::ContextTrait<DB>>(
-    ctx: State<S>,
-) -> impl IntoResponse {
-    render::add_entity_page::<E, DB>(ctx)
-}
 
 pub struct AppError {
     pub title: String,
@@ -37,7 +30,25 @@ impl IntoResponse for AppError {
     }
 }
 
-pub async fn post_add_entity<E: Entity<DB>, DB: Database, S: render::ContextTrait<DB>>(
+pub async fn get_entities<E: Entity, S: render::ContextTrait>(
+    ctx: State<S>,
+) -> Result<impl IntoResponse, AppError> {
+    let r = E::select().fetch_all(ctx.db()).await.map_err(|e| {
+        AppError::new(
+            format!("Failed to list {}", E::name_plural().to_case(Case::Title)),
+            format!("Database error: {e}"),
+        )
+    })?;
+    Ok(render::entity_list_page(ctx, &r))
+}
+
+pub async fn get_add_entity<E: Entity, S: render::ContextTrait>(
+    ctx: State<S>,
+) -> impl IntoResponse {
+    render::add_entity_page::<E>(ctx)
+}
+
+pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
     ctx: State<S>,
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, AppError> {
@@ -67,6 +78,11 @@ pub async fn post_add_entity<E: Entity<DB>, DB: Database, S: render::ContextTrai
         serde_json::to_string(&x).unwrap()
     );
 
-    let uri = &format!("/{}/{}", E::name().to_case(Case::Kebab), "id");
+    // TODO: id
+    let uri = &format!(
+        "/{}/{}",
+        E::name().to_case(Case::Kebab),
+        urlencoding::encode("id")
+    );
     Ok(Redirect::to(uri))
 }

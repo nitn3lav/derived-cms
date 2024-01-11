@@ -3,24 +3,23 @@ use std::collections::BTreeSet;
 use axum::extract::{FromRef, State};
 use convert_case::{Case, Casing};
 use maud::{html, Markup, DOCTYPE};
-use sqlx::Database;
 use uuid::Uuid;
 
-use crate::{property::EnumVariant, Entity};
+use crate::{property::EnumVariant, Entity, DB};
 
-pub trait ContextTrait<DB: Database>: Clone + Send + Sync {
+pub trait ContextTrait: Clone + Send + Sync {
     fn db(&self) -> &sqlx::Pool<DB>;
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
     fn ext(&self) -> &impl ContextExt<Self>;
 }
 
 #[derive(Debug)]
-pub struct Context<DB: Database, T: ContextExt<Self>> {
+pub struct Context<T: ContextExt<Self>> {
     pub(crate) names_plural: BTreeSet<&'static str>,
     pub(crate) db: sqlx::Pool<DB>,
     pub(crate) ext: T,
 }
-impl<DB: Database, E: ContextExt<Self>> Clone for Context<DB, E> {
+impl<E: ContextExt<Self>> Clone for Context<E> {
     fn clone(&self) -> Self {
         Self {
             names_plural: self.names_plural.clone(),
@@ -29,7 +28,7 @@ impl<DB: Database, E: ContextExt<Self>> Clone for Context<DB, E> {
         }
     }
 }
-impl<DB: Database, E: ContextExt<Self>> ContextTrait<DB> for Context<DB, E> {
+impl<E: ContextExt<Self>> ContextTrait for Context<E> {
     fn db(&self) -> &sqlx::Pool<DB> {
         &self.db
     }
@@ -41,8 +40,8 @@ impl<DB: Database, E: ContextExt<Self>> ContextTrait<DB> for Context<DB, E> {
     }
 }
 
-impl<DB: Database> FromRef<Context<DB, ()>> for () {
-    fn from_ref(_input: &Context<DB, ()>) -> Self {}
+impl FromRef<Context<()>> for () {
+    fn from_ref(_input: &Context<()>) -> Self {}
 }
 
 pub trait ContextExt<Ctx>: FromRef<Ctx> + Clone + Send + Sync {}
@@ -86,14 +85,14 @@ pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -
     }
 }
 
-pub fn add_entity<E: Entity<DB>, DB: Database>(value: Option<&E>) -> Markup {
+pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
         main {
             h1 {"Erstelle " (E::name().to_case(Case::Title))}
             form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
-                @for f in Entity::properties(value) {
+                @for f in Entity::inputs(value) {
                     div class="cms-prop-container" {
                         label class="cms-prop-label" {(f.name)}
                         (f.value.render_input(f.name, f.name, &ctx))
@@ -105,23 +104,42 @@ pub fn add_entity<E: Entity<DB>, DB: Database>(value: Option<&E>) -> Markup {
     }
 }
 
-pub async fn entity_list_page<E: Entity<DB>, DB: Database>(
-    ctx: State<impl ContextTrait<DB>>,
-) -> Markup {
+pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]) -> Markup {
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
-        (add_entity::<E, DB>(None))
+        main {
+            header class="cms-entity-list-header" {
+                h1 {(E::name_plural().to_case(Case::Title))}
+                a href=(format!("/{}/add", (E::name_plural().to_case(Case::Kebab)))) class="cms-header-button" {"Create new"}
+            }
+            table class="cms-entity-list" {
+                tr {
+                    @for c in E::column_names() {
+                        th {(c)}
+                    }
+                }
+                @for e in entities {
+                    tr {
+                        @for c in e.column_values() {
+                            td onclick=(format!("window.location = \"/{}/{}\"", E::name().to_case(Case::Kebab), urlencoding::encode("id"))) {
+                                (c.render())
+                            }
+                        }
+                    }
+                }
+            }
+        }
     })
 }
 
-pub fn add_entity_page<E: Entity<DB>, DB: Database>(ctx: State<impl ContextTrait<DB>>) -> Markup {
+pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
-        (add_entity::<E, DB>(None))
+        (add_entity::<E>(None))
     })
 }
 
-pub fn property_enum<'a>(
+pub fn input_enum<'a>(
     variants: &[EnumVariant<'a>],
     selected: usize,
     ctx: &FormRenderContext<'a>,

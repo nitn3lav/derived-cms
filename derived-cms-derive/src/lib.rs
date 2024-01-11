@@ -20,7 +20,7 @@ struct EntityFieldOptions {
     ident: Option<Ident>,
     /// Do not display this field in list columns
     #[darling(default)]
-    skip_in_column: bool,
+    skip_column: bool,
     #[darling(default)]
     skip_input: bool,
     rename: Option<String>,
@@ -59,14 +59,14 @@ impl EntityFieldOptions {
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(cms, serde))]
-struct PropertyEnumOptions {
+struct InputEnumOptions {
     rename_all: Option<RenameAll>,
     tag: String,
     content: String,
 }
 
 #[derive(Debug, FromVariant)]
-struct PropertyVariantOptions {
+struct InputVariantOptions {
     rename: Option<String>,
 }
 
@@ -150,17 +150,19 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
     let cols = fields
         .iter()
         .clone()
-        .filter(|attr| !attr.skip_in_column)
+        .filter(|attr| !attr.skip_column)
         .collect::<Vec<_>>();
     let number_of_columns = Ident::new(&format!("U{}", cols.len()), Span::call_site());
 
-    let properties = properties_fn(&fields, &struct_attr);
+    let inputs = inputs_fn(&fields, &struct_attr);
+    let column_names = column_names_fn(&fields, &struct_attr);
+    let column_values = column_values_fn(&fields);
 
     Ok(quote! {
         #[automatically_derived]
-        impl<DB: #found_crate::derive::ormlite::Database> #found_crate::Entity<DB> for #ident
+        impl #found_crate::Entity for #ident
         where
-            Self: #found_crate::derive::ormlite::Model<DB>
+            Self: #found_crate::derive::ormlite::Model<#found_crate::DB>
         {
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
@@ -171,18 +173,66 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
                 #name_plural
             }
 
-            fn render_column_values(&self) -> #found_crate::derive::generic_array::GenericArray<#found_crate::derive::maud::Markup, Self::NumberOfColumns> {
-                todo!()
-            }
-
-            #properties
+            #column_names
+            #column_values
+            #inputs
         }
     })
 }
 
-fn properties_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
+fn column_names_fn(
+    fields: &[EntityFieldOptions],
+    struct_attr: &EntityStructOptions,
+) -> TokenStream {
     let found_crate = found_crate();
-    let properties = fields
+    let columns = fields
+        .into_iter()
+        .filter(|f| !f.skip_column)
+        .map(|f| {
+            let Some(ident) = &f.ident else {
+                return quote!(compile_error!(
+                    "`Entity` can only be derived for `struct`s with named fields"
+                ));
+            };
+            let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+            quote! {
+                #name,
+            }
+        })
+        .collect::<TokenStream>();
+    quote! {
+        fn column_names() -> #found_crate::derive::generic_array::GenericArray<&'static str, Self::NumberOfColumns> {
+            #found_crate::derive::generic_array::arr![#columns]
+        }
+    }
+}
+
+fn column_values_fn(fields: &[EntityFieldOptions]) -> TokenStream {
+    let found_crate = found_crate();
+    let columns = fields
+        .into_iter()
+        .filter(|f| !f.skip_column)
+        .map(|f| {
+            let Some(ident) = &f.ident else {
+                return quote!(compile_error!(
+                    "`Entity` can only be derived for `struct`s with named fields"
+                ));
+            };
+            quote! {
+                &self.#ident,
+            }
+        })
+        .collect::<TokenStream>();
+    quote! {
+        fn column_values<'a>(&'a self) -> #found_crate::derive::generic_array::GenericArray<&'a dyn #found_crate::Column, Self::NumberOfColumns> {
+            #found_crate::derive::generic_array::arr![#columns]
+        }
+    }
+}
+
+fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
+    let found_crate = found_crate();
+    let inputs = fields
         .into_iter()
         .filter(|f| !f.skip_input)
         .map(|f| {
@@ -193,7 +243,7 @@ fn properties_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOption
             };
             let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
             quote! {
-                #found_crate::property::PropertyInfo {
+                #found_crate::input::InputInfo {
                     name: #name,
                     value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
                 },
@@ -201,19 +251,19 @@ fn properties_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOption
         })
         .collect::<TokenStream>();
     quote! {
-        fn properties<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::property::PropertyInfo<'a>> {
-            [#properties]
+        fn inputs<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::input::InputInfo<'a>> {
+            [#inputs]
         }
     }
 }
 
-#[proc_macro_derive(Property, attributes(cms))]
-pub fn derive_property(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(Input, attributes(cms))]
+pub fn derive_input(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     match &input.data {
-        Data::Struct(data) => derive_property_struct(&input, data),
-        Data::Enum(data) => derive_property_enum(&input, data),
+        Data::Struct(data) => derive_input_struct(&input, data),
+        Data::Enum(data) => derive_input_enum(&input, data),
         _ => Ok(quote!(compile_error!(
             "`Entity` can only be derived for `struct`s and `enum`s"
         ))),
@@ -222,7 +272,7 @@ pub fn derive_property(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     .into()
 }
 
-fn derive_property_struct(_input: &DeriveInput, _data: &DataStruct) -> syn::Result<TokenStream> {
+fn derive_input_struct(_input: &DeriveInput, _data: &DataStruct) -> syn::Result<TokenStream> {
     todo!()
 }
 
@@ -237,18 +287,18 @@ fn renamed_name<'a>(
     })
 }
 
-fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStream> {
+fn derive_input_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStream> {
     let found_crate = found_crate();
 
     let ident = &input.ident;
-    let attr = PropertyEnumOptions::from_derive_input(input)?;
+    let attr = InputEnumOptions::from_derive_input(input)?;
 
     let x = data
         .variants
         .iter()
         .enumerate()
         .map(|(i, v)| {
-            let variant_attr = PropertyVariantOptions::from_variant(v)?;
+            let variant_attr = InputVariantOptions::from_variant(v)?;
 
             let ident = &v.ident;
             let tag = &attr.tag;
@@ -283,7 +333,7 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
             let content_val = content_val
                 .map(|content_val| {
                     quote! {
-                        ::std::option::Option::Some(#found_crate::property::PropertyInfo {
+                        ::std::option::Option::Some(#found_crate::input::InputInfo {
                             name: #name_content,
                             value: ::std::boxed::Box::new(#content_val),
                         })
@@ -303,7 +353,7 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
 
     Ok(quote! {
         #[automatically_derived]
-        impl #found_crate::Property for #ident {
+        impl #found_crate::Input for #ident {
             fn render_input(
                 value: Option<&Self>,
                 name: &str,
@@ -311,8 +361,23 @@ fn derive_property_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<Tok
                 ctx: &derived_cms::render::FormRenderContext,
             ) -> #found_crate::derive::maud::Markup {
                 let mut _selected_idx = 0;
-                #found_crate::render::property_enum(&[#x], _selected_idx, ctx)
+                #found_crate::render::input_enum(&[#x], _selected_idx, ctx)
             }
         }
     })
+}
+
+#[proc_macro_derive(Column, attributes(cms))]
+pub fn derive_column(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let found_crate = found_crate();
+    let input = parse_macro_input!(input as DeriveInput);
+    let ident = input.ident;
+    quote! {
+        impl Column for #ident {
+            fn render(&self) -> #found_crate::derive::maud::Markup {
+                #found_crate::derive::maud::html!((self))
+            }
+        }
+    }
+    .into()
 }

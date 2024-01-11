@@ -4,68 +4,29 @@ use chrono::{DateTime, TimeZone};
 use derive_more::{Display, From, FromStr, Into};
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
-use sqlx::Database;
 use uuid::Uuid;
 
-pub use derived_cms_derive::Property;
-
-use crate::render::FormRenderContext;
-
-/// A property of an entity or nested within another property that can be input in a HTML form
-pub trait Property: Debug {
-    fn render_input(
-        value: Option<&Self>,
-        name: &str,
-        name_human: &str,
-        ctx: &FormRenderContext,
-    ) -> PreEscaped<String>;
-}
-
-/// object safe trait that is automatically implemented for [`Option<T>`] where `T` implements [`Property`]
-pub trait DynProperty: Debug {
-    fn render_input(
-        &self,
-        name: &str,
-        name_human: &str,
-        ctx: &FormRenderContext,
-    ) -> PreEscaped<String>;
-}
-
-impl<T> DynProperty for Option<&T>
-where
-    T: Property,
-{
-    fn render_input(
-        &self,
-        name: &str,
-        name_human: &str,
-        ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
-        Property::render_input(self.as_deref(), name, name_human, ctx)
-    }
-}
-
-/// a dynamic reference to a property and it's name
-#[derive(Debug)]
-pub struct PropertyInfo<'a> {
-    pub name: &'a str,
-    pub value: Box<dyn DynProperty + 'a>,
-}
+use crate as derived_cms;
+use crate::{input::InputInfo, render::FormRenderContext, Column, Input, DB};
 
 #[derive(Debug)]
 pub struct EnumVariant<'a> {
     pub name: &'a str,
     pub value: &'a str,
-    pub content: Option<PropertyInfo<'a>>,
+    pub content: Option<InputInfo<'a>>,
 }
 
+/********
+ * Text *
+ ********/
+
 #[derive(
-    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize,
+    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize, Column,
 )]
 #[serde(transparent)]
 pub struct Text(pub String);
 
-impl<'r, DB: Database> sqlx::Decode<'r, DB> for Text
+impl<'r> sqlx::Decode<'r, DB> for Text
 where
     String: sqlx::Decode<'r, DB>,
 {
@@ -76,16 +37,16 @@ where
     }
 }
 
-impl<DB: Database> sqlx::Type<DB> for Text
+impl sqlx::Type<DB> for Text
 where
     String: sqlx::Type<DB>,
 {
-    fn type_info() -> DB::TypeInfo {
+    fn type_info() -> <DB as sqlx::Database>::TypeInfo {
         <String as sqlx::Type<DB>>::type_info()
     }
 }
 
-impl<'r, DB: Database> sqlx::Encode<'r, DB> for Text
+impl<'r> sqlx::Encode<'r, DB> for Text
 where
     String: sqlx::Encode<'r, DB>,
 {
@@ -97,7 +58,7 @@ where
     }
 }
 
-impl Property for Text {
+impl Input for Text {
     fn render_input(
         value: Option<&Self>,
         name: &str,
@@ -110,19 +71,23 @@ impl Property for Text {
     }
 }
 
+/************
+ * Markdown *
+ ************/
+
 #[derive(
-    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize,
+    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize, Column,
 )]
 #[serde(transparent)]
 pub struct Markdown(pub String);
 
-impl Property for Markdown {
+impl Input for Markdown {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         _ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
+    ) -> Markup {
         html! {
             div class="markdown-buttons" {
 
@@ -131,8 +96,7 @@ impl Property for Markdown {
         }
     }
 }
-
-impl<'r, DB: Database> sqlx::Decode<'r, DB> for Markdown
+impl<'r> sqlx::Decode<'r, DB> for Markdown
 where
     String: sqlx::Decode<'r, DB>,
 {
@@ -142,17 +106,15 @@ where
         Ok(Self(<String as sqlx::Decode<DB>>::decode(value)?))
     }
 }
-
-impl<DB: Database> sqlx::Type<DB> for Markdown
+impl sqlx::Type<DB> for Markdown
 where
     String: sqlx::Type<DB>,
 {
-    fn type_info() -> DB::TypeInfo {
+    fn type_info() -> <DB as sqlx::Database>::TypeInfo {
         <String as sqlx::Type<DB>>::type_info()
     }
 }
-
-impl<DB: Database> sqlx::Encode<'static, DB> for Markdown
+impl sqlx::Encode<'static, DB> for Markdown
 where
     for<'a> String: sqlx::Encode<'a, DB>,
 {
@@ -164,7 +126,11 @@ where
     }
 }
 
-impl<Tz: TimeZone> Property for DateTime<Tz>
+/************
+ * DateTime *
+ ************/
+
+impl<Tz: TimeZone> Input for DateTime<Tz>
 where
     for<'de> DateTime<Tz>: Deserialize<'de>,
     Tz::Offset: std::fmt::Display,
@@ -174,7 +140,7 @@ where
         name: &str,
         _name_human: &str,
         ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
+    ) -> Markup {
         let input_id = Uuid::new_v4();
         let hidden_id = Uuid::new_v4();
         html! {
@@ -195,30 +161,51 @@ document.getElementById("{}").addEventListener("submit", () => {{
         }
     }
 }
+impl<Tz: TimeZone> Column for DateTime<Tz> {
+    fn render(&self) -> Markup {
+        html! {
+            time datetime=(self.to_rfc3339()) {
+                (self.to_rfc2822())
+            }
+        }
+    }
+}
 
-impl Property for bool {
+/********
+ * bool *
+ ********/
+
+impl Input for bool {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
         _ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
+    ) -> Markup {
         html! {
             input type="checkbox" name=(name) checked[*value.unwrap_or(&false)] {}
         }
     }
 }
+impl Column for bool {
+    fn render(&self) -> Markup {
+        html! {
+            input type="checkbox" disabled checked=(self) {}
+        }
+    }
+}
 
-impl<T> Property for Vec<T>
-where
-    T: Property,
-{
+/**********
+ * Vec<T> *
+ **********/
+
+impl<T: Input> Input for Vec<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
+    ) -> Markup {
         let btn_id = Uuid::new_v4();
         let list_id = Uuid::new_v4();
         let template_id = Uuid::new_v4();
@@ -228,12 +215,12 @@ where
                 @if let Some(v) = value {
                     @for (i, v) in v.iter().enumerate() {
                         fieldset class="cms-list-element" {
-                            (Property::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
+                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
                         }
                     }
                 }
                 fieldset id=(template_id) class="cms-list-element" {
-                    (Property::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx))
+                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx))
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
@@ -265,14 +252,33 @@ function setIndex(el, i) {{
     }
 }
 
+/********
+ * Json *
+ ********/
+
 #[cfg(feature = "json")]
-impl<T: Property> Property for sqlx::types::Json<T> {
+impl<T: Input> Input for sqlx::types::Json<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         ctx: &FormRenderContext,
-    ) -> PreEscaped<String> {
+    ) -> Markup {
         T::render_input(value.map(|v| &v.0), name, name_human, ctx)
+    }
+}
+impl<T: Column> Column for sqlx::types::Json<T> {
+    fn render(&self) -> Markup {
+        self.0.render()
+    }
+}
+
+/********
+ * Uuid *
+ ********/
+
+impl Column for Uuid {
+    fn render(&self) -> Markup {
+        html!((self))
     }
 }

@@ -9,7 +9,7 @@ Example
 
 ```rust
 use chrono::{DateTime, Utc};
-use derived_cms::{App, Entity, Property, property::{Markdown, Text}};
+use derived_cms::{App, Entity, Input, property::{Markdown, Text}};
 use ormlite::{Model, sqlite::Sqlite, types::Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -22,12 +22,13 @@ struct Post {
     id: Uuid,
     title: Text,
     date: DateTime<Utc>,
+    #[cms(skip_column)]
     #[serde(default)]
     content: Json<Vec<Block>>,
     draft: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize, Property)]
+#[derive(Debug, Deserialize, Serialize, Input)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum Block {
     Separator,
