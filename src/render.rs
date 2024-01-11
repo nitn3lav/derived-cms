@@ -85,21 +85,18 @@ pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -
     }
 }
 
-pub fn add_entity<E: Entity>(value: Option<&E>) -> Markup {
+pub fn entity_inputs<E: Entity>(value: Option<&E>) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
-        main {
-            h1 {"Erstelle " (E::name().to_case(Case::Title))}
-            form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
-                @for f in Entity::inputs(value) {
-                    div class="cms-prop-container" {
-                        label class="cms-prop-label" {(f.name)}
-                        (f.value.render_input(f.name, f.name, &ctx))
-                    }
+        form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
+            @for f in Entity::inputs(value) {
+                div class="cms-prop-container" {
+                    label class="cms-prop-label" {(f.name)}
+                    (f.value.render_input(f.name, f.name, &ctx))
                 }
-                button type="submit" {"Speichern"}
             }
+            button class="cms-button" type="submit" {"Speichern"}
         }
     }
 }
@@ -108,9 +105,9 @@ pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
         main {
-            header class="cms-entity-list-header" {
+            header class="cms-header" {
                 h1 {(E::name_plural().to_case(Case::Title))}
-                a href=(format!("/{}/add", (E::name_plural().to_case(Case::Kebab)))) class="cms-header-button" {"Create new"}
+                a href=(format!("/{}/add", (E::name_plural().to_case(Case::Kebab)))) class="cms-button" {"Create new"}
             }
             table class="cms-entity-list" {
                 tr {
@@ -136,10 +133,23 @@ pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]
     })
 }
 
-pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>) -> Markup {
+pub fn entity_page<E: Entity>(ctx: State<impl ContextTrait>, entity: Option<&E>) -> Markup {
     document(html! {
         (sidebar(ctx.names_plural(), E::name_plural()))
-        (add_entity::<E>(None))
+        main {
+            h1 {(E::name().to_case(Case::Title))" bearbeiten"}
+            (entity_inputs::<E>(entity))
+        }
+    })
+}
+
+pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>, entity: Option<&E>) -> Markup {
+    document(html! {
+        (sidebar(ctx.names_plural(), E::name_plural()))
+        main {
+            h1 {"Erstelle " (E::name().to_case(Case::Title))}
+            (entity_inputs::<E>(entity))
+        }
     })
 }
 

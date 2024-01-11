@@ -73,6 +73,10 @@ pub trait Entity:
                 get(endpoints::ui::get_entities::<Self, S>),
             )
             .route(
+                &format!("/{name}/:id"),
+                get(endpoints::ui::get_entity::<Self, S>),
+            )
+            .route(
                 &format!("/{name_pl}/add"),
                 get(endpoints::ui::get_add_entity::<Self, S>),
             )

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{RawForm, State},
+    extract::{Path, RawForm, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
@@ -42,10 +42,23 @@ pub async fn get_entities<E: Entity, S: render::ContextTrait>(
     Ok(render::entity_list_page(ctx, &r))
 }
 
+pub async fn get_entity<E: Entity, S: render::ContextTrait>(
+    ctx: State<S>,
+    Path(id): Path<E::Id>,
+) -> Result<impl IntoResponse, AppError> {
+    let r = E::fetch_one(id, ctx.db()).await.map_err(|e| {
+        AppError::new(
+            format!("Failed to show {}", E::name_plural().to_case(Case::Title)),
+            format!("Database error: {e:#}"),
+        )
+    })?;
+    Ok(render::entity_page(ctx, Some(&r)))
+}
+
 pub async fn get_add_entity<E: Entity, S: render::ContextTrait>(
     ctx: State<S>,
 ) -> impl IntoResponse {
-    render::add_entity_page::<E>(ctx)
+    render::add_entity_page::<E>(ctx, None)
 }
 
 pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
