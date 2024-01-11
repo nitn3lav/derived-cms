@@ -21,6 +21,9 @@ pub trait Entity:
     + Unpin
     + 'static
 {
+    /// should usually be an UUID
+    type Id: for<'de> Deserialize<'de> + Serialize + Default + Send;
+
     type NumberOfColumns: ArrayLength;
 
     fn name() -> &'static str;

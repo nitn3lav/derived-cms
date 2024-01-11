@@ -5,7 +5,7 @@ use darling::{FromAttributes, FromDeriveInput, FromField, FromMeta, FromVariant}
 use proc_macro2::{Ident, Span, TokenStream};
 use proc_macro_crate::{crate_name, FoundCrate};
 use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field};
+use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field, Type};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
@@ -18,6 +18,9 @@ struct EntityStructOptions {
 #[darling(attributes(cms, serde))]
 struct EntityFieldOptions {
     ident: Option<Ident>,
+    ty: Type,
+    #[darling(default)]
+    id: bool,
     /// Do not display this field in list columns
     #[darling(default)]
     skip_column: bool,
@@ -147,9 +150,20 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
         .map(EntityFieldOptions::parse)
         .collect::<Result<Vec<_>, _>>()?;
 
+    let mut id_iter = fields.iter().filter(|attr| attr.id).map(|attr| &attr.ty);
+    let Some(id) = id_iter.next() else {
+        return Ok(quote!(compile_error!(
+            "an Entity must have exactly one id. help: add `#[cms(id)]` to your id field"
+        )));
+    };
+    if let Some(_) = id_iter.next() {
+        return Ok(quote!(compile_error!(
+            "An Entity can only have exactly one id"
+        )));
+    }
+
     let cols = fields
         .iter()
-        .clone()
         .filter(|attr| !attr.skip_column)
         .collect::<Vec<_>>();
     let number_of_columns = Ident::new(&format!("U{}", cols.len()), Span::call_site());
@@ -164,6 +178,8 @@ fn derive_entity_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<T
         where
             Self: #found_crate::derive::ormlite::Model<#found_crate::DB>
         {
+            type Id = #id;
+
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
             fn name() -> &'static ::std::primitive::str {
