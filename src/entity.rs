@@ -2,7 +2,7 @@ use std::{convert::Infallible, error::Error, fmt::Display, future::Future};
 
 use axum::{
     extract::FromRequestParts,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use convert_case::{Case, Casing};
@@ -65,8 +65,12 @@ pub trait Entity:
                 post(endpoints::api::post_entities::<Self, S>),
             )
             .route(
-                &format!("/api/v1/{name_pl}/:id"),
+                &format!("/api/v1/{name}/:id"),
                 post(endpoints::api::post_entity::<Self, S>),
+            )
+            .route(
+                &format!("/api/v1/{name}/:id"),
+                delete(endpoints::api::delete_entity::<Self, S>),
             )
             // UI
             .route(
@@ -85,6 +89,10 @@ pub trait Entity:
                 &format!("/{name_pl}/add"),
                 post(endpoints::ui::post_add_entity::<Self, S>),
             )
+            .route(
+                &format!("/{name}/:id/delete"),
+                post(endpoints::ui::delete_entity::<Self, S>),
+            )
     }
 }
 
@@ -102,6 +110,14 @@ pub trait EntityHooks: Send + Sized {
 
     /// called before an [`Entity`] is updated
     fn on_update(
+        self,
+        _ext: Self::RequestExt<impl ContextTrait>,
+    ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
+        async { Result::<Self, Infallible>::Ok(self) }
+    }
+
+    /// called before an [`Entity`] is updated
+    fn on_delete(
         self,
         _ext: Self::RequestExt<impl ContextTrait>,
     ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {

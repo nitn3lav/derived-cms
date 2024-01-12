@@ -16,3 +16,6 @@ error-create-entity =
     .title = Failed to create {$name}
     .parse-form = Failed to parse form: {$error}
     .db = {-db-error} {$error}
+error-delete-entity =
+    .title = Failed to delete {$name}
+    .db = {-db-error} {$error}

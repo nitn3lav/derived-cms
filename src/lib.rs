@@ -81,6 +81,11 @@
 //!         // do some stuff
 //!         Ok(self)
 //!     }
+//!
+//!     async fn on_delete(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
+//!         // do some stuff
+//!         Ok(self)
+//!     }
 //! }
 //! ```
 

@@ -147,3 +147,55 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     );
     Ok(Redirect::to(uri))
 }
+
+pub async fn delete_entity<E: Entity, S: ContextTrait>(
+    ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
+    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    Path(id): Path<E::Id>,
+) -> Result<impl IntoResponse, AppError> {
+    let db = ctx.db();
+    E::fetch_one(id, db)
+        .await
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-delete-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(i18n, "error-delete-entity", "db", error = format!("{e:#}")),
+            )
+        })?
+        .on_delete(ext)
+        .await
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-delete-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                format!("{e:#}"),
+            )
+        })?
+        .delete(db)
+        .await
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-delete-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(i18n, "error-delete-entity", "db", error = format!("{e:#}")),
+            )
+        })?;
+    Ok(Redirect::to(&format!(
+        "/{}",
+        E::name().to_case(Case::Kebab)
+    )))
+}
