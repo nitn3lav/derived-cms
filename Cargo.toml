@@ -14,6 +14,7 @@ chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
 derive_more = "0.99.17"
 derived-cms-derive = { version = "0.1.0", path = "derived-cms-derive" }
+format-sql-query = "0.4.0"
 generic-array = "1.0.0"
 include_dir = "0.7.3"
 maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version = "0.25.0", features = [

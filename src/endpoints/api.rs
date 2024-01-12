@@ -1,7 +1,7 @@
 use std::{convert::Infallible, error::Error};
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::{IntoResponse, Response},
     Json,
 };
@@ -25,8 +25,17 @@ impl<H: Error + Send> IntoResponse for ApiError<H> {
 
 pub async fn get_entities<E: Entity, S: render::ContextTrait>(
     ctx: State<S>,
+    Query(filters): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<E>>, ApiError<Infallible>> {
-    Ok(Json(E::select().fetch_all(ctx.db()).await?))
+    let mut q = E::select();
+    for (k, v) in filters {
+        q = q.dangerous_where(&format!(
+            "{} = {}",
+            format_sql_query::Column((&*k).into()),
+            format_sql_query::QuotedData(&v)
+        ))
+    }
+    Ok(Json(q.fetch_all(ctx.db()).await?))
 }
 
 pub async fn get_entity<E: Entity, S: render::ContextTrait>(
