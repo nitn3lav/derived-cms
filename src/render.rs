@@ -1,5 +1,7 @@
 use axum::extract::State;
 use convert_case::{Case, Casing};
+use i18n_embed::fluent::FluentLanguageLoader;
+use i18n_embed_fl::fl;
 use maud::{html, Markup, DOCTYPE};
 use uuid::Uuid;
 
@@ -29,7 +31,11 @@ pub fn document(body: Markup) -> Markup {
     }
 }
 
-pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -> Markup {
+pub fn sidebar(
+    _i18n: &FluentLanguageLoader,
+    names: impl IntoIterator<Item = impl AsRef<str>>,
+    active: &str,
+) -> Markup {
     html! {
         nav class="cms-sidebar" {
             @for name in names {
@@ -42,7 +48,7 @@ pub fn sidebar(names: impl IntoIterator<Item = impl AsRef<str>>, active: &str) -
     }
 }
 
-pub fn entity_inputs<E: Entity>(value: Option<&E>) -> Markup {
+pub fn entity_inputs<E: Entity>(i18n: &FluentLanguageLoader, value: Option<&E>) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
@@ -50,21 +56,29 @@ pub fn entity_inputs<E: Entity>(value: Option<&E>) -> Markup {
             @for f in Entity::inputs(value) {
                 div class="cms-prop-container" {
                     label class="cms-prop-label" {(f.name)}
-                    (f.value.render_input(f.name, f.name, &ctx))
+                    (f.value.render_input(f.name, f.name, &ctx, i18n))
                 }
             }
-            button class="cms-button" type="submit" {"Speichern"}
+            button class="cms-button" type="submit" {
+                (fl!(i18n, "entity-inputs-submit"))
+            }
         }
     }
 }
 
-pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]) -> Markup {
+pub fn entity_list_page<E: Entity>(
+    ctx: State<impl ContextTrait>,
+    i18n: &FluentLanguageLoader,
+    entities: &[E],
+) -> Markup {
     document(html! {
-        (sidebar(ctx.names_plural(), E::name_plural()))
+        (sidebar(&i18n, ctx.names_plural(), E::name_plural()))
         main {
             header class="cms-header" {
                 h1 {(E::name_plural().to_case(Case::Title))}
-                a href=(format!("/{}/add", (E::name_plural().to_case(Case::Kebab)))) class="cms-button" {"Create new"}
+                a href=(format!("/{}/add", (E::name_plural().to_case(Case::Kebab)))) class="cms-button" {
+                    (fl!(i18n, "enitity-list-add"))
+                }
             }
             table class="cms-entity-list" {
                 tr {
@@ -90,30 +104,39 @@ pub fn entity_list_page<E: Entity>(ctx: State<impl ContextTrait>, entities: &[E]
     })
 }
 
-pub fn entity_page<E: Entity>(ctx: State<impl ContextTrait>, entity: Option<&E>) -> Markup {
+pub fn entity_page<E: Entity>(
+    ctx: State<impl ContextTrait>,
+    i18n: &FluentLanguageLoader,
+    entity: Option<&E>,
+) -> Markup {
     document(html! {
-        (sidebar(ctx.names_plural(), E::name_plural()))
+        (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
-            h1 {(E::name().to_case(Case::Title))" bearbeiten"}
-            (entity_inputs::<E>(entity))
+            h1 {(fl!(i18n, "edit-entity-title", name = E::name().to_case(Case::Title)))}
+            (entity_inputs::<E>(i18n, entity))
         }
     })
 }
 
-pub fn add_entity_page<E: Entity>(ctx: State<impl ContextTrait>, entity: Option<&E>) -> Markup {
+pub fn add_entity_page<E: Entity>(
+    ctx: State<impl ContextTrait>,
+    i18n: &FluentLanguageLoader,
+    entity: Option<&E>,
+) -> Markup {
     document(html! {
-        (sidebar(ctx.names_plural(), E::name_plural()))
+        (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
-            h1 {"Erstelle " (E::name().to_case(Case::Title))}
-            (entity_inputs::<E>(entity))
+            h1 {(fl!(i18n, "create-entity-title", name = E::name().to_case(Case::Title)))}
+            (entity_inputs::<E>(i18n, entity))
         }
     })
 }
 
 pub fn input_enum<'a>(
+    ctx: &FormRenderContext<'a>,
+    i18n: &FluentLanguageLoader,
     variants: &[EnumVariant<'a>],
     selected: usize,
-    ctx: &FormRenderContext<'a>,
 ) -> Markup {
     let id_type = Uuid::new_v4();
     let id_data = Uuid::new_v4();
@@ -142,7 +165,7 @@ pub fn input_enum<'a>(
                 };
                 fieldset class=(class) disabled[i != selected] {
                     @if let Some(ref data) = variant.content {
-                        (data.value.render_input(data.name, &variant.value.to_case(Case::Title), ctx))
+                        (data.value.render_input(data.name, &variant.value.to_case(Case::Title), ctx, i18n))
                     }
                 }
             }

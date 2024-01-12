@@ -94,9 +94,11 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                 name: &str,
                 _name_human: &str,
                 ctx: &derived_cms::render::FormRenderContext,
+                i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 let mut _selected_idx = 0;
-                #found_crate::render::input_enum(&[#x], _selected_idx, ctx)
+                // TODO
+                #found_crate::render::input_enum(ctx, i18n, &[#x], _selected_idx)
             }
         }
     })

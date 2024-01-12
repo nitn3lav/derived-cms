@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, TimeZone};
 use derive_more::{Display, From, FromStr, Into};
+use i18n_embed::fluent::FluentLanguageLoader;
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -64,6 +65,7 @@ impl Input for Text {
         name: &str,
         name_human: &str,
         _ctx: &FormRenderContext,
+        _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
             input type="text" name=(name) placeholder=(name_human) class="cms-text-input" value=[value] {}
@@ -87,12 +89,15 @@ impl Input for Markdown {
         name: &str,
         name_human: &str,
         _ctx: &FormRenderContext,
+        _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            div class="markdown-buttons" {
-
+            div class="cms-markdown-editor" {
+                div class="cms-markdown-buttons" {
+                    // TODO
+                }
+                textarea name=(name) placeholder=(name_human) value=[value] {}
             }
-            textarea name=(name) placeholder=(name_human) value=[value] {}
         }
     }
 }
@@ -140,6 +145,7 @@ where
         name: &str,
         _name_human: &str,
         ctx: &FormRenderContext,
+        _i18n: &FluentLanguageLoader,
     ) -> Markup {
         let input_id = Uuid::new_v4();
         let hidden_id = Uuid::new_v4();
@@ -181,6 +187,7 @@ impl Input for bool {
         name: &str,
         _name_human: &str,
         _ctx: &FormRenderContext,
+        _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
             input type="checkbox" name=(name) checked[*value.unwrap_or(&false)] {}
@@ -205,6 +212,7 @@ impl<T: Input> Input for Vec<T> {
         name: &str,
         name_human: &str,
         ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
     ) -> Markup {
         let btn_id = Uuid::new_v4();
         let list_id = Uuid::new_v4();
@@ -215,12 +223,12 @@ impl<T: Input> Input for Vec<T> {
                 @if let Some(v) = value {
                     @for (i, v) in v.iter().enumerate() {
                         fieldset class="cms-list-element" {
-                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx))
+                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx, i18n))
                         }
                     }
                 }
                 fieldset id=(template_id) class="cms-list-element" {
-                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx))
+                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx, i18n))
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
@@ -263,8 +271,9 @@ impl<T: Input> Input for sqlx::types::Json<T> {
         name: &str,
         name_human: &str,
         ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
     ) -> Markup {
-        T::render_input(value.map(|v| &v.0), name, name_human, ctx)
+        T::render_input(value.map(|v| &v.0), name, name_human, ctx, i18n)
     }
 }
 #[cfg(feature = "json")]

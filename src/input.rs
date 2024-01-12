@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use i18n_embed::fluent::FluentLanguageLoader;
 use maud::Markup;
 
 use crate::render::FormRenderContext;
@@ -13,17 +14,30 @@ pub trait Input: Debug {
         name: &str,
         name_human: &str,
         ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
     ) -> Markup;
 }
 
 /// object safe trait that is automatically implemented for [`Option<T>`] where `T` implements [`Input`]
 pub trait DynInput: Debug {
-    fn render_input(&self, name: &str, name_human: &str, ctx: &FormRenderContext) -> Markup;
+    fn render_input(
+        &self,
+        name: &str,
+        name_human: &str,
+        ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
+    ) -> Markup;
 }
 
 impl<T: Input> DynInput for Option<&T> {
-    fn render_input(&self, name: &str, name_human: &str, ctx: &FormRenderContext) -> Markup {
-        Input::render_input(self.as_deref(), name, name_human, ctx)
+    fn render_input(
+        &self,
+        name: &str,
+        name_human: &str,
+        ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        Input::render_input(self.as_deref(), name, name_human, ctx, i18n)
     }
 }
 

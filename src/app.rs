@@ -1,11 +1,17 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use axum::{
+    extract::Request,
     http::{header::CONTENT_TYPE, HeaderMap, HeaderValue},
+    middleware::{self, Next},
+    response::Response,
     routing::get,
     Router,
 };
+use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
 use include_dir::{include_dir, Dir, DirEntry};
+use rust_embed::RustEmbed;
+use unic_langid::LanguageIdentifier;
 
 use crate::{
     context::{Context, ContextExt},
@@ -14,6 +20,10 @@ use crate::{
 };
 
 static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
+
+#[derive(RustEmbed)]
+#[folder = "i18n/"]
+struct Localizations;
 
 /// build an [`axum::Router`] with all routes required for API and admin interface
 #[derive(Clone, Debug)]
@@ -74,8 +84,25 @@ where
                 db,
                 ext: self.state_ext,
             })
+            .layer(middleware::from_fn(localize))
             .merge(include_static_files(&STATIC_ASSETS))
     }
+}
+
+async fn localize(mut req: Request, next: Next) -> Response {
+    let langs = req
+        .headers()
+        .get(axum::http::header::ACCEPT_LANGUAGE)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| accept_language::parse(v))
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|lang| lang.parse::<LanguageIdentifier>().ok())
+        .collect::<Vec<_>>();
+    let language_loader: FluentLanguageLoader = fluent_language_loader!();
+    i18n_embed::select(&language_loader, &Localizations, &langs).unwrap();
+    req.extensions_mut().insert(Arc::new(language_loader));
+    next.run(req).await
 }
 
 pub fn include_static_files<S: Clone + Send + Sync + 'static>(dir: &'static Dir<'_>) -> Router<S> {

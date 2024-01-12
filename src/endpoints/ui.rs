@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, RawForm, State},
+    extract::{Extension, Path, RawForm, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
 use convert_case::{Case, Casing};
+use i18n_embed::fluent::FluentLanguageLoader;
+use i18n_embed_fl::fl;
 use tracing::{debug, error};
 
 use crate::{context::ContextTrait, render, Entity};
@@ -32,45 +36,69 @@ impl IntoResponse for AppError {
 
 pub async fn get_entities<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
 ) -> Result<impl IntoResponse, AppError> {
     let r = E::select().fetch_all(ctx.db()).await.map_err(|e| {
         AppError::new(
-            format!("Failed to list {}", E::name_plural().to_case(Case::Title)),
-            format!("Database error: {e:#}"),
+            fl!(
+                i18n,
+                "error-list-entities",
+                "title",
+                name = E::name_plural().to_case(Case::Title)
+            ),
+            fl!(i18n, "error-list-entities", "db", error = format!("{e:#}")),
         )
     })?;
-    Ok(render::entity_list_page(ctx, &r))
+    Ok(render::entity_list_page(ctx, &i18n, &r))
 }
 
 pub async fn get_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
     let r = E::fetch_one(id, ctx.db()).await.map_err(|e| {
         AppError::new(
-            format!("Failed to show {}", E::name_plural().to_case(Case::Title)),
-            format!("Database error: {e:#}"),
+            fl!(
+                i18n,
+                "error-show-entity",
+                "title",
+                name = E::name_plural().to_case(Case::Title)
+            ),
+            fl!(i18n, "error-show-entity", "db", error = format!("{e:#}")),
         )
     })?;
-    Ok(render::entity_page(ctx, Some(&r)))
+    Ok(render::entity_page(ctx, &i18n, Some(&r)))
 }
 
 pub async fn get_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
 ) -> impl IntoResponse {
-    render::add_entity_page::<E>(ctx, None)
+    render::add_entity_page::<E>(ctx, &i18n, None)
 }
 
 pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, AppError> {
     let e = serde_qs::Config::new(5, false)
         .deserialize_bytes::<E>(&form)
         .map_err(|e| {
             AppError::new(
-                format!("Failed to create new {}", E::name().to_case(Case::Title)),
-                format!("Failed to parse form: {e:#}"),
+                fl!(
+                    i18n,
+                    "error-create-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(
+                    i18n,
+                    "error-create-entity",
+                    "parse-form",
+                    error = format!("{e:#}")
+                ),
             )
         })?;
     debug!(
@@ -83,7 +111,12 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
         .await
         .map_err(|e| {
             AppError::new(
-                format!("Failed to create new {}", E::name().to_case(Case::Title)),
+                fl!(
+                    i18n,
+                    "error-create-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
                 format!("{e:#}"),
             )
         })?
@@ -91,8 +124,13 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
         .await
         .map_err(|e| {
             AppError::new(
-                format!("Failed to create new {}", E::name().to_case(Case::Title)),
-                format!("Database error: {e:#}"),
+                fl!(
+                    i18n,
+                    "error-create-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(i18n, "error-create-entity", "db", error = format!("{e:#}")),
             )
         })?;
     debug!(

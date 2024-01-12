@@ -98,6 +98,7 @@ pub mod render;
 #[doc(hidden)]
 pub mod derive {
     pub use generic_array;
+    pub use i18n_embed;
     pub use maud;
     pub use ormlite;
 }
