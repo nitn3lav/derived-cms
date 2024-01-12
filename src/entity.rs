@@ -9,7 +9,7 @@ use generic_array::{ArrayLength, GenericArray};
 use ormlite::Model;
 use serde::{Deserialize, Serialize};
 
-use crate::{column::Column, endpoints, input::InputInfo, render, DB};
+use crate::{column::Column, context::ContextTrait, endpoints, input::InputInfo, DB};
 
 pub use derived_cms_derive::Entity;
 
@@ -43,7 +43,7 @@ pub trait Entity:
     fn column_values<'a>(&'a self) -> GenericArray<&'a dyn Column, Self::NumberOfColumns>;
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 
-    fn routes<S: render::ContextTrait + 'static>() -> Router<S> {
+    fn routes<S: ContextTrait + 'static>() -> Router<S> {
         let name = Self::name().to_case(Case::Kebab);
         let name = urlencoding::encode(&name);
         let name_pl = Self::name_plural().to_case(Case::Kebab);

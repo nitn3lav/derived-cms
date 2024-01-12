@@ -7,7 +7,7 @@ use axum::{
 };
 use thiserror::Error;
 
-use crate::{render, Entity};
+use crate::{context::ContextTrait, Entity};
 
 #[derive(Debug, Error)]
 pub enum ApiError<H: Error + Send> {
@@ -23,7 +23,7 @@ impl<H: Error + Send> IntoResponse for ApiError<H> {
     }
 }
 
-pub async fn get_entities<E: Entity, S: render::ContextTrait>(
+pub async fn get_entities<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Query(filters): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<E>>, ApiError<Infallible>> {
@@ -38,7 +38,7 @@ pub async fn get_entities<E: Entity, S: render::ContextTrait>(
     Ok(Json(q.fetch_all(ctx.db()).await?))
 }
 
-pub async fn get_entity<E: Entity, S: render::ContextTrait>(
+pub async fn get_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Path(id): Path<E::Id>,
 ) -> Result<Json<E>, ApiError<Infallible>> {
@@ -46,7 +46,7 @@ pub async fn get_entity<E: Entity, S: render::ContextTrait>(
 }
 
 /// create a new entity
-pub async fn post_entities<E: Entity, S: render::ContextTrait>(
+pub async fn post_entities<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Json(data): Json<E>,
 ) -> Result<Json<E>, ApiError<impl Error + Send>> {
@@ -60,7 +60,7 @@ pub async fn post_entities<E: Entity, S: render::ContextTrait>(
 }
 
 /// update existing entity
-pub async fn post_entity<E: Entity, S: render::ContextTrait>(
+pub async fn post_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Path(id): Path<E::Id>,
 ) -> Result<Json<E>, ApiError<Infallible>> {

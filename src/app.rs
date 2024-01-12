@@ -7,7 +7,11 @@ use axum::{
 };
 use include_dir::{include_dir, Dir, DirEntry};
 
-use crate::{entity::Entity, render, DB};
+use crate::{
+    context::{Context, ContextExt},
+    entity::Entity,
+    DB,
+};
 
 static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 
@@ -15,16 +19,16 @@ static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 #[derive(Clone, Debug)]
 pub struct App<S, E>
 where
-    S: render::ContextExt<render::Context<S>>,
+    S: ContextExt<Context<S>>,
 {
-    router: Router<render::Context<S>>,
+    router: Router<Context<S>>,
     names_plural: BTreeSet<&'static str>,
     state_ext: E,
 }
 
 impl<S> App<S, ()>
 where
-    S: render::ContextExt<render::Context<S>> + 'static,
+    S: ContextExt<Context<S>> + 'static,
 {
     pub fn new() -> Self {
         Self {
@@ -37,18 +41,18 @@ where
 
 impl<S, SE> App<S, SE>
 where
-    S: render::ContextExt<render::Context<S>> + 'static,
+    S: ContextExt<Context<S>> + 'static,
 {
     pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
         self.names_plural.insert(E::name_plural());
-        self.router = self.router.merge(E::routes::<render::Context<S>>());
+        self.router = self.router.merge(E::routes::<Context<S>>());
         self
     }
 }
 
 impl<S, E> App<S, E>
 where
-    S: render::ContextExt<render::Context<S>> + 'static,
+    S: ContextExt<Context<S>> + 'static,
 {
     pub fn with_state(self, data: S) -> App<S, S> {
         App {
@@ -61,11 +65,11 @@ where
 
 impl<S> App<S, S>
 where
-    S: render::ContextExt<render::Context<S>> + 'static,
+    S: ContextExt<Context<S>> + 'static,
 {
     pub fn build(self, db: sqlx::Pool<DB>) -> Router {
         self.router
-            .with_state(render::Context {
+            .with_state(Context {
                 names_plural: self.names_plural,
                 db,
                 ext: self.state_ext,

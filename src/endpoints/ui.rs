@@ -6,7 +6,7 @@ use axum::{
 use convert_case::{Case, Casing};
 use tracing::{debug, error};
 
-use crate::{render, Entity};
+use crate::{context::ContextTrait, render, Entity};
 
 pub struct AppError {
     pub title: String,
@@ -30,7 +30,7 @@ impl IntoResponse for AppError {
     }
 }
 
-pub async fn get_entities<E: Entity, S: render::ContextTrait>(
+pub async fn get_entities<E: Entity, S: ContextTrait>(
     ctx: State<S>,
 ) -> Result<impl IntoResponse, AppError> {
     let r = E::select().fetch_all(ctx.db()).await.map_err(|e| {
@@ -42,7 +42,7 @@ pub async fn get_entities<E: Entity, S: render::ContextTrait>(
     Ok(render::entity_list_page(ctx, &r))
 }
 
-pub async fn get_entity<E: Entity, S: render::ContextTrait>(
+pub async fn get_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -55,13 +55,13 @@ pub async fn get_entity<E: Entity, S: render::ContextTrait>(
     Ok(render::entity_page(ctx, Some(&r)))
 }
 
-pub async fn get_add_entity<E: Entity, S: render::ContextTrait>(
+pub async fn get_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
 ) -> impl IntoResponse {
     render::add_entity_page::<E>(ctx, None)
 }
 
-pub async fn post_add_entity<E: Entity, S: render::ContextTrait>(
+pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, AppError> {
