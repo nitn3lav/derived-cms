@@ -6,9 +6,11 @@ use crate::DB;
 
 /// Trait implemented by the context available in all endpoints using [`axum::extract::State`].
 pub trait ContextTrait: Clone + Send + Sync {
+    type Ext: ContextExt<Self>;
+
     fn db(&self) -> &sqlx::Pool<DB>;
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
-    fn ext(&self) -> &impl ContextExt<Self>;
+    fn ext(&self) -> &Self::Ext;
 }
 
 #[derive(Debug)]
@@ -27,13 +29,15 @@ impl<E: ContextExt<Self>> Clone for Context<E> {
     }
 }
 impl<E: ContextExt<Self>> ContextTrait for Context<E> {
+    type Ext = E;
+
     fn db(&self) -> &sqlx::Pool<DB> {
         &self.db
     }
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>> {
         self.names_plural.iter()
     }
-    fn ext(&self) -> &impl ContextExt<Self> {
+    fn ext(&self) -> &E {
         &self.ext
     }
 }
