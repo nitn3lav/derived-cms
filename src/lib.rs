@@ -34,7 +34,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://.tmp/db.sqlite?mode=rwc")
+//!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://.tmp/db.sqlite")
 //!         .await
 //!         .unwrap();
 //!     let app = App::new().entity::<Post>().build(db);
@@ -48,26 +48,29 @@
 //! You can add hooks to be run before an entity is created or updated
 //!
 //! ```rust
-//! use std::convert::Infallible;
-//!
-//! use chrono::{DateTime, Utc};
-//! use derived_cms::{App, Entity, EntityHooks, Input, context::ContextTrait, property::{Markdown, Text}};
-//! use ormlite::{Model, sqlite::Sqlite, types::Json};
-//! use serde::{Deserialize, Serialize};
-//! use uuid::Uuid;
-//!
-//! #[derive(Debug, Deserialize, Serialize, Model, Entity)]
-//! #[cms(hooks)]
-//! struct Post {
-//!     #[cms(id, skip_input)]
-//!     #[ormlite(primary_key)]
-//!     #[serde(default = "uuid::Uuid::new_v4")]
-//!     id: Uuid,
-//!     title: Text,
-//!     date: DateTime<Utc>,
-//!     draft: bool,
-//! }
-//!
+//! # use std::convert::Infallible;
+//! #
+//! # use chrono::{DateTime, Utc};
+//! # use derived_cms::{App, Entity, EntityHooks, Input, context::ContextTrait, property::{Markdown, Text}};
+//! # use ormlite::{Model, sqlite::Sqlite, types::Json};
+//! # use serde::{Deserialize, Serialize};
+//! # use uuid::Uuid;
+//! #
+//! # #[derive(Debug, Deserialize, Serialize, Model, Entity)]
+//! # #[cms(hooks)]
+//! # struct Post {
+//! #     #[cms(id, skip_input)]
+//! #     #[ormlite(primary_key)]
+//! #     #[serde(default = "uuid::Uuid::new_v4")]
+//! #     id: Uuid,
+//! #     title: Text,
+//! #     date: DateTime<Utc>,
+//! #     #[cms(skip_column)]
+//! #     #[serde(default)]
+//! #     content: Json<Vec<Block>>,
+//! #     draft: bool,
+//! # }
+//! #
 //! impl EntityHooks for Post {
 //!     // can be used to pass state from a custom middleware
 //!     type RequestExt<S: ContextTrait> = ();
@@ -88,6 +91,31 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## REST API
+//!
+//! A REST API is automatically generated for all `Entities`.
+//!
+//! List of generated endpoints, with [`name`](Entity::name) and [`name-plural`](Entity::name_plural)
+//! converted to [kebab-case](convert_case::Case::Kebab):
+//!
+//! - `GET /api/v1/:name-plural`:
+//!   - allows filtering by exact value in the query string, e. g. `?slug=asdf`. This currently
+//!     only works for fields whose SQL representation is a string.
+//!   - returns an array of [entities](Entity), serialized using [serde_json].
+//! - `GET /api/v1/:name/:id`
+//!   - get an [Entity] by it's [id](ormlite::TableMeta::primary_key).
+//!   - returns the requested of [Entity], serialized using [serde_json].
+//! - `POST /api/v1/:name-plural`
+//!   - create a new [Entity] from the request body JSON.
+//!   - returns the newly created [Entity] as JSON.
+//! - `POST /api/v1/:name/:id`
+//!   - replaces the [Entity] with the specified [id](ormlite::TableMeta::primary_key) with the
+//!     request body JSON.
+//!   - returns the updated [Entity] as JSON.
+//! - `DELETE /api/v1/:name/:id`
+//!   - deletes the [Entity] with the specified [id](ormlite::TableMeta::primary_key)
+//!   - returns the deleted Entity as JSON.
 
 pub use app::App;
 pub use column::Column;

@@ -38,12 +38,14 @@ pub trait Entity:
     fn name() -> &'static str;
     fn name_plural() -> &'static str;
 
+    /// should return the value of the field used as primary key.
     fn id(&self) -> &Self::Id;
 
     fn column_names() -> GenericArray<&'static str, Self::NumberOfColumns>;
     fn column_values<'a>(&'a self) -> GenericArray<&'a dyn Column, Self::NumberOfColumns>;
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 
+    /// returns a [Router] with all generated HTTP endponts
     fn routes<S: ContextTrait + 'static>() -> Router<S> {
         let name = Self::name().to_case(Case::Kebab);
         let name = urlencoding::encode(&name);
