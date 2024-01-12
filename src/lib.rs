@@ -51,7 +51,7 @@
 //! use std::convert::Infallible;
 //!
 //! use chrono::{DateTime, Utc};
-//! use derived_cms::{App, Entity, EntityHooks, Input, property::{Markdown, Text}};
+//! use derived_cms::{App, Entity, EntityHooks, Input, context::ContextTrait, property::{Markdown, Text}};
 //! use ormlite::{Model, sqlite::Sqlite, types::Json};
 //! use serde::{Deserialize, Serialize};
 //! use uuid::Uuid;
@@ -67,14 +67,17 @@
 //!     date: DateTime<Utc>,
 //!     draft: bool,
 //! }
-
+//!
 //! impl EntityHooks for Post {
-//!     async fn on_create(self) -> Result<Self, Infallible> {
+//!     // can be used to pass state from a custom middleware
+//!     type RequestExt<S: ContextTrait> = ();
+//!
+//!     async fn on_create(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
 //!         // do some stuff
 //!         Ok(self)
 //!     }
 //!
-//!     async fn on_update(self) -> Result<Self, Infallible> {
+//!     async fn on_update(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
 //!         // do some stuff
 //!         Ok(self)
 //!     }

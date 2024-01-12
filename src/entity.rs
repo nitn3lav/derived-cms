@@ -1,6 +1,7 @@
 use std::{convert::Infallible, error::Error, fmt::Display, future::Future};
 
 use axum::{
+    extract::FromRequestParts,
     routing::{get, post},
     Router,
 };
@@ -88,13 +89,22 @@ pub trait Entity:
 }
 
 pub trait EntityHooks: Send + Sized {
+    /// type of an Extension that can be used in hooks and must be added in a [middleware][axum::middleware]
+    type RequestExt<S: ContextTrait>: FromRequestParts<S> + Send + Sync + Clone;
+
     /// called before an [`Entity`] is inserted into the database
-    fn on_create(self) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
+    fn on_create(
+        self,
+        _ext: Self::RequestExt<impl ContextTrait>,
+    ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
         async { Result::<Self, Infallible>::Ok(self) }
     }
 
     /// called before an [`Entity`] is updated
-    fn on_update(self) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
+    fn on_update(
+        self,
+        _ext: Self::RequestExt<impl ContextTrait>,
+    ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
         async { Result::<Self, Infallible>::Ok(self) }
     }
 }

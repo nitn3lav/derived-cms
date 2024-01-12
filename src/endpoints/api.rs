@@ -3,11 +3,11 @@ use std::{convert::Infallible, error::Error};
 use axum::{
     extract::{Path, Query, State},
     response::{IntoResponse, Response},
-    Json,
+    Extension, Json,
 };
 use thiserror::Error;
 
-use crate::{context::ContextTrait, Entity};
+use crate::{context::ContextTrait, entity::EntityHooks, Entity};
 
 #[derive(Debug, Error)]
 pub enum ApiError<H: Error + Send> {
@@ -48,10 +48,11 @@ pub async fn get_entity<E: Entity, S: ContextTrait>(
 /// create a new entity
 pub async fn post_entities<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     Json(data): Json<E>,
 ) -> Result<Json<E>, ApiError<impl Error + Send>> {
     Ok(Json(
-        data.on_create()
+        data.on_create(ext)
             .await
             .map_err(ApiError::Hook)?
             .insert(ctx.db())
@@ -62,6 +63,7 @@ pub async fn post_entities<E: Entity, S: ContextTrait>(
 /// update existing entity
 pub async fn post_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
+    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     Path(id): Path<E::Id>,
 ) -> Result<Json<E>, ApiError<Infallible>> {
     todo!()

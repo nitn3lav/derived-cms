@@ -84,6 +84,11 @@ where
                 db,
                 ext: self.state_ext,
             })
+            .layer(middleware::from_fn(|mut req: Request, next: Next| {
+                // add extension `()` to prevent HTTP 500 response when using default/derived impl of `EntityHooks`.
+                req.extensions_mut().insert(());
+                next.run(req)
+            }))
             .layer(middleware::from_fn(localize))
             .merge(include_static_files(&STATIC_ASSETS))
     }

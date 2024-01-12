@@ -10,7 +10,7 @@ use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
 use tracing::{debug, error};
 
-use crate::{context::ContextTrait, render, Entity};
+use crate::{context::ContextTrait, entity::EntityHooks, render, Entity};
 
 pub struct AppError {
     pub title: String,
@@ -81,6 +81,7 @@ pub async fn get_add_entity<E: Entity, S: ContextTrait>(
 pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
+    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, AppError> {
     let e = serde_qs::Config::new(5, false)
@@ -107,7 +108,7 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
         serde_json::to_string(&e).unwrap()
     );
     let e = e
-        .on_create()
+        .on_create(ext)
         .await
         .map_err(|e| {
             AppError::new(

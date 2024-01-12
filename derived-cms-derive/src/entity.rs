@@ -113,7 +113,9 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let hooks = if !struct_attr.hooks {
         quote! {
             #[automatically_derived]
-            impl #found_crate::EntityHooks for #ident {}
+            impl #found_crate::EntityHooks for #ident {
+                type RequestExt<S: #found_crate::context::ContextTrait> = ();
+            }
         }
     } else {
         quote!()
