@@ -9,12 +9,14 @@ Example
 
 ```rust
 use chrono::{DateTime, Utc};
-use derived_cms::{App, Entity, Input, property::{Markdown, Text}};
-use ormlite::{Model, sqlite::Sqlite, types::Json};
+use derived_cms::{App, Entity, Input, property::{Markdown, Text, Json}};
+use ormlite::{Model, sqlite::Sqlite};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize, Serialize, Model, Entity)]
+#[derive(Debug, Deserialize, Serialize, Entity, Model, TS)]
+#[ts(export)]
 struct Post {
     #[cms(skip_input)]
     #[ormlite(primary_key)]
@@ -28,7 +30,8 @@ struct Post {
     draft: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize, Input)]
+#[derive(Debug, Deserialize, Serialize, Input, TS)]
+#[ts(export)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum Block {
     Separator,

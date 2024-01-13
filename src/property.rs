@@ -5,6 +5,7 @@ use derive_more::{Display, From, FromStr, Into};
 use i18n_embed::fluent::FluentLanguageLoader;
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use crate as derived_cms;
@@ -26,6 +27,23 @@ pub struct EnumVariant<'a> {
 )]
 #[serde(transparent)]
 pub struct Text(pub String);
+
+impl TS for Text {
+    fn name() -> String {
+        "string".to_string()
+    }
+
+    fn dependencies() -> Vec<ts_rs::Dependency>
+    where
+        Self: 'static,
+    {
+        Vec::new()
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+}
 
 impl<'r> sqlx::Decode<'r, DB> for Text
 where
@@ -82,6 +100,23 @@ impl Input for Text {
 )]
 #[serde(transparent)]
 pub struct Markdown(pub String);
+
+impl TS for Markdown {
+    fn name() -> String {
+        "string".to_string()
+    }
+
+    fn dependencies() -> Vec<ts_rs::Dependency>
+    where
+        Self: 'static,
+    {
+        Vec::new()
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+}
 
 impl Input for Markdown {
     fn render_input(
@@ -265,7 +300,67 @@ function setIndex(el, i) {{
  ********/
 
 #[cfg(feature = "json")]
-impl<T: Input> Input for sqlx::types::Json<T> {
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
+#[serde(transparent)]
+pub struct Json<T: ?Sized>(pub T);
+
+impl<T: TS> TS for Json<T> {
+    fn name() -> String {
+        "Json".to_string()
+    }
+
+    fn dependencies() -> Vec<ts_rs::Dependency>
+    where
+        Self: 'static,
+    {
+        Vec::new()
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+
+    fn name_with_type_args(args: Vec<String>) -> String {
+        args[0].clone()
+    }
+}
+
+impl<'r, T> sqlx::Decode<'r, DB> for Json<T>
+where
+    sqlx::types::Json<T>: sqlx::Decode<'r, DB>,
+{
+    fn decode(
+        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+    ) -> Result<Self, sqlx::error::BoxDynError> {
+        Ok(Self(
+            <sqlx::types::Json<T> as sqlx::Decode<DB>>::decode(value)?.0,
+        ))
+    }
+}
+impl<T> sqlx::Type<DB> for Json<T>
+where
+    sqlx::types::Json<T>: sqlx::Type<DB>,
+{
+    fn type_info() -> <DB as sqlx::Database>::TypeInfo {
+        <sqlx::types::Json<T> as sqlx::Type<DB>>::type_info()
+    }
+}
+impl<'q, T> sqlx::Encode<'q, DB> for Json<T>
+where
+    for<'a> sqlx::types::Json<&'a T>: sqlx::Encode<'q, DB>,
+{
+    fn encode_by_ref(
+        &self,
+        buf: &mut <DB as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
+    ) -> sqlx_core::encode::IsNull {
+        <sqlx::types::Json<&T> as sqlx::Encode<'q, DB>>::encode(sqlx::types::Json(&self.0), buf)
+    }
+}
+
+#[cfg(feature = "json")]
+impl<T: Input> Input for Json<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
@@ -277,7 +372,7 @@ impl<T: Input> Input for sqlx::types::Json<T> {
     }
 }
 #[cfg(feature = "json")]
-impl<T: Column> Column for sqlx::types::Json<T> {
+impl<T: Column> Column for Json<T> {
     fn render(&self, i18n: &FluentLanguageLoader) -> Markup {
         self.0.render(i18n)
     }
