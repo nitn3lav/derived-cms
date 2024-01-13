@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use axum::extract::State;
 use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
@@ -85,23 +87,66 @@ pub fn entity_list_page<E: Entity>(
                     @for c in E::column_names() {
                         th {(c)}
                     }
+                    th {}
                 }
                 @for e in entities {
-                    tr {
+                    @let name = E::name().to_case(Case::Kebab);
+                    @let id = e.id().to_string();
+                    @let id = urlencoding::encode(&id);
+                    @let row_id = Uuid::new_v4();
+                    @let dialog_id = Uuid::new_v4();
+                    tr id=(row_id) {
                         @for c in e.column_values() {
                             td onclick=(format!(
-                                "window.location = \"/{}/{}\"",
-                                E::name().to_case(Case::Kebab),
-                                urlencoding::encode(&e.id().to_string()))
-                            ) {
+                                "window.location = \"/{name}/{id}\"",
+                            )) {
                                 (c.render())
                             }
                         }
+                        td
+                            class="cms-list-delete-button"
+                            onclick=(format!(r#"document.getElementById("{dialog_id}").showModal()"#))
+                        {
+                            "X"
+                        }
+                        (confirm_delete_modal(
+                            i18n,
+                            dialog_id,
+                            &E::name().to_case(Case::Title),
+                            format!(r#"
+fetch("/{name}/{id}/delete", {{ method: "POST" }})
+    .then(() => {{
+        document.getElementById("{row_id}").remove();
+        document.getElementById("{dialog_id}").remove();
+    }})
+                            "#).trim()
+                        ))
                     }
                 }
             }
         }
     })
+}
+
+pub fn confirm_delete_modal(
+    i18n: &FluentLanguageLoader,
+    dialog_id: impl Display,
+    name: &str,
+    on_submit: impl Display,
+) -> Markup {
+    html! {
+        dialog id=(dialog_id) class="cms-confirm-delete-modal" {
+            p {(fl!(i18n, "confirm-delete-modal", "title", name = name))}
+            form method="dialog" {
+                button {
+                    (fl!(i18n, "confirm-delete-modal", "cancel"))
+                }
+                button onclick=(on_submit) {
+                    (fl!(i18n, "confirm-delete-modal", "confirm"))
+                }
+            }
+        }
+    }
 }
 
 pub fn entity_page<E: Entity>(

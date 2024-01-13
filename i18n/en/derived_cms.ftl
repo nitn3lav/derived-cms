@@ -1,3 +1,4 @@
+-cancel = Cancel
 
 enitity-list-add = Create new
 
@@ -19,3 +20,8 @@ error-create-entity =
 error-delete-entity =
     .title = Failed to delete {$name}
     .db = {-db-error} {$error}
+
+confirm-delete-modal =
+    .title = Confirm delete {$name}
+    .cancel = {-cancel}
+    .confirm = Delete
