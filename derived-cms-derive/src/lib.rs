@@ -41,7 +41,7 @@ pub fn derive_column(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let ident = input.ident;
     quote! {
         impl Column for #ident {
-            fn render(&self) -> #found_crate::derive::maud::Markup {
+            fn render(&self, _i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader) -> #found_crate::derive::maud::Markup {
                 #found_crate::derive::maud::html!((self))
             }
         }

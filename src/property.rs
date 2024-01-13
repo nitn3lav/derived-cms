@@ -168,7 +168,7 @@ document.getElementById("{}").addEventListener("submit", () => {{
     }
 }
 impl<Tz: TimeZone> Column for DateTime<Tz> {
-    fn render(&self) -> Markup {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
             time datetime=(self.to_rfc3339()) {
                 (self.to_rfc2822())
@@ -195,9 +195,9 @@ impl Input for bool {
     }
 }
 impl Column for bool {
-    fn render(&self) -> Markup {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
-            input type="checkbox" disabled checked=(self) {}
+            input type="checkbox" disabled checked[*self] {}
         }
     }
 }
@@ -278,8 +278,8 @@ impl<T: Input> Input for sqlx::types::Json<T> {
 }
 #[cfg(feature = "json")]
 impl<T: Column> Column for sqlx::types::Json<T> {
-    fn render(&self) -> Markup {
-        self.0.render()
+    fn render(&self, i18n: &FluentLanguageLoader) -> Markup {
+        self.0.render(i18n)
     }
 }
 
@@ -288,7 +288,7 @@ impl<T: Column> Column for sqlx::types::Json<T> {
  ********/
 
 impl Column for Uuid {
-    fn render(&self) -> Markup {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html!((self))
     }
 }

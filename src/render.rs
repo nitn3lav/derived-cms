@@ -100,7 +100,7 @@ pub fn entity_list_page<E: Entity>(
                             td onclick=(format!(
                                 "window.location = \"/{name}/{id}\"",
                             )) {
-                                (c.render())
+                                (c.render(i18n))
                             }
                         }
                         td
