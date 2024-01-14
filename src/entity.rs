@@ -85,7 +85,7 @@ pub trait Entity:
             )
             .route(
                 &format!("/{name}/:id"),
-                get(endpoints::ui::post_entity::<Self, S>),
+                post(endpoints::ui::post_entity::<Self, S>),
             )
             .route(
                 &format!("/{name_pl}/add"),
