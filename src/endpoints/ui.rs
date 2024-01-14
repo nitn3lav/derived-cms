@@ -148,6 +148,72 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     Ok(Redirect::to(uri))
 }
 
+pub async fn post_entity<E: Entity, S: ContextTrait>(
+    ctx: State<S>,
+    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
+    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    Path(id): Path<E::Id>,
+    RawForm(form): RawForm,
+) -> Result<impl IntoResponse, AppError> {
+    let db = ctx.db();
+    let new = serde_qs::Config::new(5, false)
+        .deserialize_bytes::<E>(&form)
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-update-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(
+                    i18n,
+                    "error-update-entity",
+                    "parse-form",
+                    error = format!("{e:#}")
+                ),
+            )
+        })?;
+    let old = E::fetch_one(id, db).await.map_err(|e| {
+        AppError::new(
+            fl!(
+                i18n,
+                "error-update-entity",
+                "title",
+                name = E::name().to_case(Case::Title)
+            ),
+            fl!(i18n, "error-update-entity", "db", error = format!("{e:#}")),
+        )
+    })?;
+    let e = E::on_update(old, new, ext)
+        .await
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-update-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                format!("{e:#}"),
+            )
+        })?
+        .update_all_fields(db)
+        .await
+        .map_err(|e| {
+            AppError::new(
+                fl!(
+                    i18n,
+                    "error-update-entity",
+                    "title",
+                    name = E::name().to_case(Case::Title)
+                ),
+                fl!(i18n, "error-update-entity", "db", error = format!("{e:#}")),
+            )
+        })?;
+    Ok(render::entity_page(ctx, &i18n, Some(&e)))
+}
+
 pub async fn delete_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,

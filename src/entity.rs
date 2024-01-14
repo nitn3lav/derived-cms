@@ -84,6 +84,10 @@ pub trait Entity:
                 get(endpoints::ui::get_entity::<Self, S>),
             )
             .route(
+                &format!("/{name}/:id"),
+                get(endpoints::ui::post_entity::<Self, S>),
+            )
+            .route(
                 &format!("/{name_pl}/add"),
                 get(endpoints::ui::get_add_entity::<Self, S>),
             )
@@ -112,10 +116,11 @@ pub trait EntityHooks: Send + Sized {
 
     /// called before an [`Entity`] is updated
     fn on_update(
-        self,
+        _old: Self,
+        new: Self,
         _ext: Self::RequestExt<impl ContextTrait>,
     ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
-        async { Result::<Self, Infallible>::Ok(self) }
+        async { Result::<Self, Infallible>::Ok(new) }
     }
 
     /// called before an [`Entity`] is updated

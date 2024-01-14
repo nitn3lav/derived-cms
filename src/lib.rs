@@ -82,9 +82,9 @@
 //!         Ok(self)
 //!     }
 //!
-//!     async fn on_update(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
+//!     async fn on_update(old: Self, new: Self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
 //!         // do some stuff
-//!         Ok(self)
+//!         Ok(new)
 //!     }
 //!
 //!     async fn on_delete(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {

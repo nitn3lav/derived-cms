@@ -65,8 +65,17 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     Path(id): Path<E::Id>,
-) -> Result<Json<E>, ApiError<Infallible>> {
-    todo!()
+    Json(new): Json<E>,
+) -> Result<Json<E>, ApiError<impl Error + Send>> {
+    let db = ctx.db();
+    let old = E::fetch_one(id, db).await?;
+    Ok(Json(
+        E::on_update(old, new, ext)
+            .await
+            .map_err(ApiError::Hook)?
+            .update_all_fields(db)
+            .await?,
+    ))
 }
 
 pub async fn delete_entity<E: Entity, S: ContextTrait>(
