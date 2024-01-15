@@ -42,7 +42,7 @@ pub trait Entity:
     fn id(&self) -> &Self::Id;
 
     fn column_names() -> GenericArray<&'static str, Self::NumberOfColumns>;
-    fn column_values<'a>(&'a self) -> GenericArray<&'a dyn Column, Self::NumberOfColumns>;
+    fn column_values(&self) -> GenericArray<&dyn Column, Self::NumberOfColumns>;
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 
     /// returns a [Router] with all generated HTTP endponts

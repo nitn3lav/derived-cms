@@ -35,8 +35,7 @@ impl EntityFieldOptions {
         // TODO: allow overwriting options from serde with #[cms(...)]
         let attrs = f
             .attrs
-            .to_owned()
-            .into_iter()
+            .iter()
             // filter serde fields
             .filter(|a| {
                 let path = a.path();
@@ -48,6 +47,7 @@ impl EntityFieldOptions {
                 }
                 false
             })
+            .cloned()
             .collect();
         let f = Field {
             attrs,
@@ -94,7 +94,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             "`Entity` can only be derived for `struct`s with named fields"
         )));
     };
-    if let Some(_) = id_iter.next() {
+    if id_iter.next().is_some() {
         return Ok(quote!(compile_error!(
             "An Entity can only have exactly one id"
         )));
@@ -157,7 +157,7 @@ fn column_names_fn(
 ) -> TokenStream {
     let found_crate = found_crate();
     let columns = fields
-        .into_iter()
+        .iter()
         .filter(|f| !f.skip_column)
         .map(|f| {
             let Some(ident) = &f.ident else {
@@ -181,7 +181,7 @@ fn column_names_fn(
 fn column_values_fn(fields: &[EntityFieldOptions]) -> TokenStream {
     let found_crate = found_crate();
     let columns = fields
-        .into_iter()
+        .iter()
         .filter(|f| !f.skip_column)
         .map(|f| {
             let Some(ident) = &f.ident else {
@@ -204,7 +204,7 @@ fn column_values_fn(fields: &[EntityFieldOptions]) -> TokenStream {
 fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
     let found_crate = found_crate();
     let inputs = fields
-        .into_iter()
+        .iter()
         .filter(|f| !f.skip_input)
         .map(|f| {
             let Some(ident) = &f.ident else {

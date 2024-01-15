@@ -36,16 +36,25 @@ where
     state_ext: E,
 }
 
+impl<S> Default for App<S, ()>
+where
+    S: ContextExt<Context<S>> + 'static,
+{
+    fn default() -> Self {
+        Self {
+            router: Default::default(),
+            names_plural: Default::default(),
+            state_ext: Default::default(),
+        }
+    }
+}
+
 impl<S> App<S, ()>
 where
     S: ContextExt<Context<S>> + 'static,
 {
     pub fn new() -> Self {
-        Self {
-            router: Router::new(),
-            names_plural: Default::default(),
-            state_ext: Default::default(),
-        }
+        Self::default()
     }
 }
 
@@ -99,7 +108,7 @@ async fn localize(mut req: Request, next: Next) -> Response {
         .headers()
         .get(axum::http::header::ACCEPT_LANGUAGE)
         .and_then(|v| v.to_str().ok())
-        .map(|v| accept_language::parse(v))
+        .map(accept_language::parse)
         .unwrap_or_default()
         .into_iter()
         .filter_map(|lang| lang.parse::<LanguageIdentifier>().ok())

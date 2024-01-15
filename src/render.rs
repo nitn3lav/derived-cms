@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{cmp::Ordering, fmt::Display};
 
 use axum::extract::State;
 use convert_case::{Case, Casing};
@@ -54,7 +54,7 @@ pub fn entity_inputs<E: Entity>(i18n: &FluentLanguageLoader, value: Option<&E>) 
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
-        form id=(form_id) class="cms-entity-form cms-add-form" method="post" {
+        form id=(form_id) class="cms-entity-form cms-add-form" method="post" enctype="multipart/form-data" {
             @for f in Entity::inputs(value) {
                 div class="cms-prop-container" {
                     label class="cms-prop-label" {(f.name)}
@@ -201,12 +201,10 @@ pub fn input_enum<'a>(
         }
         div class="cms-enum-data" id=(id_data) {
             @for (i, variant) in variants.iter().enumerate() {
-                @let class = if i < selected {
-                    "cms-enum-container cms-enum-hidden cms-enum-hidden-left"
-                } else if i > selected {
-                    "cms-enum-container cms-enum-hidden cms-enum-hidden-right"
-                } else {
-                    "cms-enum-container"
+                @let class = match i.cmp(&selected) {
+                    Ordering::Less => "cms-enum-container cms-enum-hidden cms-enum-hidden-left",
+                    Ordering::Greater => "cms-enum-container cms-enum-hidden cms-enum-hidden-right",
+                    Ordering::Equal => "cms-enum-container",
                 };
                 fieldset class=(class) disabled[i != selected] {
                     @if let Some(ref data) = variant.content {
@@ -224,7 +222,7 @@ pub fn error_page(title: &str, description: &str) -> Markup {
         main {
             h1 {(title)}
             p {
-                @for line in description.split("\n") {
+                @for line in description.split('\n') {
                     (line)
                     br;
                 }

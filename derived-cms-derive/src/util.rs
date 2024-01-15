@@ -8,34 +8,34 @@ use quote::quote;
 
 #[derive(Clone, Copy, Debug, FromMeta)]
 pub enum RenameAll {
-    LowerCase,
+    Lower,
     #[darling(rename = "UPPERCASE")]
-    UpperCase,
+    Upper,
     #[darling(rename = "PascalCase")]
-    PascalCase,
+    Pascal,
     #[darling(rename = "camelCase")]
-    CamelCase,
+    Camel,
     #[darling(rename = "snake_case")]
-    SnakeCase,
+    Snake,
     #[darling(rename = "SCREAMING_SNAKE_CASE")]
-    ScreamingSnakeCase,
+    ScreamingSnake,
     #[darling(rename = "kebab-case")]
-    KebabCase,
+    Kebab,
     #[darling(rename = "SCREAMING-SNAKE-CASE")]
-    ScreamingKebabCase,
+    ScreamingKebab,
 }
 
 impl From<RenameAll> for Case {
     fn from(value: RenameAll) -> Self {
         match value {
-            RenameAll::LowerCase => Case::Lower,
-            RenameAll::UpperCase => Case::Upper,
-            RenameAll::PascalCase => Case::Pascal,
-            RenameAll::CamelCase => Case::Camel,
-            RenameAll::SnakeCase => Case::Snake,
-            RenameAll::ScreamingSnakeCase => Case::ScreamingSnake,
-            RenameAll::KebabCase => Case::Kebab,
-            RenameAll::ScreamingKebabCase => Case::UpperKebab,
+            RenameAll::Lower => Case::Lower,
+            RenameAll::Upper => Case::Upper,
+            RenameAll::Pascal => Case::Pascal,
+            RenameAll::Camel => Case::Camel,
+            RenameAll::Snake => Case::Snake,
+            RenameAll::ScreamingSnake => Case::ScreamingSnake,
+            RenameAll::Kebab => Case::Kebab,
+            RenameAll::ScreamingKebab => Case::UpperKebab,
         }
     }
 }
