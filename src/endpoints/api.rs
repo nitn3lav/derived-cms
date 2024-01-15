@@ -1,10 +1,11 @@
-use std::{convert::Infallible, error::Error};
+use std::{convert::Infallible, error::Error, fmt::Display};
 
 use axum::{
     extract::{Path, Query, State},
     response::{IntoResponse, Response},
     Extension, Json,
 };
+use sqlmo::query::Where;
 use thiserror::Error;
 
 use crate::{context::ContextTrait, entity::EntityHooks, Entity};
@@ -15,6 +16,8 @@ pub enum ApiError<H: Error + Send> {
     Database(#[from] ormlite::Error),
     #[error(transparent)]
     Hook(H),
+    #[error("{0}")]
+    Other(String),
 }
 
 impl<H: Error + Send> IntoResponse for ApiError<H> {
@@ -28,14 +31,41 @@ pub async fn get_entities<E: Entity, S: ContextTrait>(
     Query(filters): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<E>>, ApiError<Infallible>> {
     let mut q = E::select();
+    let Where::And(ref mut w) = q.query.where_ else {
+        return Err(ApiError::Other(
+            "Select: `Where` was not `And`. This should never happen".to_string(),
+        ));
+    };
     for (k, v) in filters {
-        q = q.dangerous_where(&format!(
+        let col = format_sql_query::Column((&*k).into());
+        let mut or = vec![Where::Raw(format!(
             "{} = {}",
-            format_sql_query::Column((&*k).into()),
+            col,
             format_sql_query::QuotedData(&v)
-        ))
+        ))];
+        if let Some(v) = sql_literal(&v) {
+            or.push(Where::Raw(format!("`{col}` = {v}")));
+        };
+        if let Some(v) = sql_binary(&v) {
+            or.push(Where::Raw(format!("`{col}` = {v}")));
+        }
+        w.push(Where::Or(or));
     }
     Ok(Json(q.fetch_all(ctx.db()).await?))
+}
+
+fn sql_literal(s: &str) -> Option<&str> {
+    (s.parse::<f64>().is_ok() || s.to_lowercase().parse::<bool>().is_ok()).then_some(s)
+}
+
+fn sql_binary(s: &str) -> Option<impl Display + '_> {
+    struct R<'a>(&'a str);
+    impl<'a> Display for R<'a> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "X'{}'", self.0)
+        }
+    }
+    ((s.len() & 1 == 0) && s.chars().all(|c| char::is_ascii_hexdigit(&c))).then_some(R(s))
 }
 
 pub async fn get_entity<E: Entity, S: ContextTrait>(
