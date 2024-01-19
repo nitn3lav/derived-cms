@@ -13,3 +13,5 @@ confirm-delete-modal =
     .title = Löschen bestätigen
     .cancel = {-cancel}
     .confirm = Löschen
+
+image-alt-text = Bildunterschrift

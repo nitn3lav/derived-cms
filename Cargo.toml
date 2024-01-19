@@ -9,7 +9,7 @@ license = "MPL-2.0"
 
 [dependencies]
 accept-language = "3.1.0"
-axum = "0.7.3"
+axum = { version = "0.7.3", features = ["multipart"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
@@ -34,6 +34,7 @@ sqlmo = "0.16.3"
 sqlx = "0.7.3"
 sqlx-core = "0.7.3"
 thiserror = "1.0.56"
+tokio = { version = "1.35.1", features = ["fs"] }
 tracing = "0.1.40"
 ts-rs = "7.1.0"
 unic-langid = "0.9.4"

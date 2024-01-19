@@ -29,3 +29,5 @@ confirm-delete-modal =
     .title = Confirm delete {$name}
     .cancel = {-cancel}
     .confirm = Delete
+
+image-alt-text = Alt text

@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeSet, path::PathBuf, sync::Arc};
 
 use axum::{
     extract::Request,
@@ -86,11 +86,12 @@ impl<S> App<S, S>
 where
     S: ContextExt<Context<S>> + 'static,
 {
-    pub fn build(self, db: sqlx::Pool<DB>) -> Router {
+    pub fn build(self, uploads_dir: impl Into<PathBuf>, db: sqlx::Pool<DB>) -> Router {
         self.router
             .with_state(Context {
                 names_plural: self.names_plural,
                 db,
+                uploads_dir: uploads_dir.into(),
                 ext: self.state_ext,
             })
             .layer(middleware::from_fn(|mut req: Request, next: Next| {

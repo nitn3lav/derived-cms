@@ -1,14 +1,18 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Extension, Path, RawForm, State},
+    extract::{multipart::MultipartError, Extension, Multipart, Path, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
 use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
+use serde::Deserialize;
+use thiserror::Error;
+use tokio::io::AsyncWriteExt;
 use tracing::{debug, error};
+use uuid::Uuid;
 
 use crate::{context::ContextTrait, entity::EntityHooks, render, Entity};
 
@@ -82,10 +86,10 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
     Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
-    RawForm(form): RawForm,
+    form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    let e = serde_qs::Config::new(5, false)
-        .deserialize_bytes::<E>(&form)
+    let e = parse_form::<E>(form, ctx.uploads_dir())
+        .await
         .map_err(|e| {
             AppError::new(
                 fl!(
@@ -153,11 +157,11 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
     Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     Path(id): Path<E::Id>,
-    RawForm(form): RawForm,
+    form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
     let db = ctx.db();
-    let new = serde_qs::Config::new(5, false)
-        .deserialize_bytes::<E>(&form)
+    let new = parse_form::<E>(form, ctx.uploads_dir())
+        .await
         .map_err(|e| {
             AppError::new(
                 fl!(
@@ -264,4 +268,85 @@ pub async fn delete_entity<E: Entity, S: ContextTrait>(
         "/{}",
         E::name().to_case(Case::Kebab)
     )))
+}
+
+#[derive(Debug, Error)]
+enum ParseFormError {
+    #[error("Multipart error: {0:#}")]
+    Multipart(
+        #[from]
+        #[source]
+        MultipartError,
+    ),
+    #[error("Field had no name")]
+    NameMissing,
+    #[error("Failed to write file: {0:#}")]
+    Io(
+        #[from]
+        #[source]
+        tokio::io::Error,
+    ),
+    #[error("File names must not contain '/': {0}")]
+    FilenameSlash(String),
+    #[error("Failed to deserialize: {0}")]
+    Deserialize(
+        #[from]
+        #[source]
+        serde_qs::Error,
+    ),
+}
+
+/// Parse multipart/form-data with nested fields like in [serde_qs].
+/// Files are stored with a unique id in `files_dir` and are deserialized as
+/// ```rs
+/// struct File {
+///     /// name of the file created in `files_dir`
+///     id: String,
+///     /// original filename
+///     name: String,
+/// }
+/// ```
+async fn parse_form<T: for<'de> Deserialize<'de>>(
+    mut form: Multipart,
+    files_dir: &std::path::Path,
+) -> Result<T, ParseFormError> {
+    let mut qs = String::new();
+    while let Some(field) = form.next_field().await? {
+        let name = field.name().ok_or(ParseFormError::NameMissing)?;
+        let name = urlencoding::encode(name);
+        match field.file_name() {
+            Some(filename) => {
+                let id = Uuid::new_v4();
+                if filename.contains('/') {
+                    return Err(ParseFormError::FilenameSlash(filename.to_string()));
+                }
+                let new_filename = format!("{id}_{filename}");
+                let filename = urlencoding::encode(filename);
+                let id = urlencoding::encode(&new_filename);
+                if !qs.is_empty() {
+                    qs.push_str("&");
+                }
+                qs.push_str(&format!("{name}[name]={filename}&{name}[id]={id}"));
+                tokio::fs::create_dir_all(&files_dir).await?;
+                let path = files_dir.join(new_filename);
+                tokio::fs::File::create(path)
+                    .await?
+                    .write(&field.bytes().await?)
+                    .await?;
+                // TODO: delete newly created files on error
+            }
+            None => {
+                if !qs.is_empty() {
+                    qs.push_str("&");
+                }
+                qs.push_str(&name);
+                let bytes = field.bytes().await?;
+                let value = urlencoding::encode_binary(&bytes);
+                qs.push_str("=");
+                qs.push_str(&value);
+            }
+        };
+    }
+    dbg!(&qs);
+    Ok(serde_qs::Config::new(5, false).deserialize_str(&qs)?)
 }

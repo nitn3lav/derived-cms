@@ -1,4 +1,7 @@
-use std::collections::BTreeSet;
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 use axum::extract::FromRef;
 
@@ -10,6 +13,7 @@ pub trait ContextTrait: Clone + Send + Sync {
 
     fn db(&self) -> &sqlx::Pool<DB>;
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
+    fn uploads_dir(&self) -> &Path;
     fn ext(&self) -> &Self::Ext;
 }
 
@@ -17,6 +21,7 @@ pub trait ContextTrait: Clone + Send + Sync {
 pub struct Context<T: ContextExt<Self>> {
     pub(crate) names_plural: BTreeSet<&'static str>,
     pub(crate) db: sqlx::Pool<DB>,
+    pub(crate) uploads_dir: PathBuf,
     pub(crate) ext: T,
 }
 impl<E: ContextExt<Self>> Clone for Context<E> {
@@ -24,6 +29,7 @@ impl<E: ContextExt<Self>> Clone for Context<E> {
         Self {
             names_plural: self.names_plural.clone(),
             db: self.db.clone(),
+            uploads_dir: self.uploads_dir.clone(),
             ext: self.ext.clone(),
         }
     }
@@ -36,6 +42,9 @@ impl<E: ContextExt<Self>> ContextTrait for Context<E> {
     }
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>> {
         self.names_plural.iter()
+    }
+    fn uploads_dir(&self) -> &Path {
+        &self.uploads_dir
     }
     fn ext(&self) -> &E {
         &self.ext
