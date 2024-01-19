@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use chrono::{DateTime, TimeZone};
 use derive_more::{Display, From, FromStr, Into};
 use i18n_embed::fluent::FluentLanguageLoader;
+use i18n_embed_fl::fl;
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -23,7 +24,19 @@ pub struct EnumVariant<'a> {
  ********/
 
 #[derive(
-    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize, Column,
+    Clone,
+    Debug,
+    Default,
+    Display,
+    From,
+    FromStr,
+    Into,
+    PartialEq,
+    Eq,
+    Hash,
+    Deserialize,
+    Serialize,
+    Column,
 )]
 #[serde(transparent)]
 pub struct Text(pub String);
@@ -96,7 +109,19 @@ impl Input for Text {
  ************/
 
 #[derive(
-    Clone, Debug, Default, Display, From, FromStr, Into, PartialEq, Deserialize, Serialize, Column,
+    Clone,
+    Debug,
+    Default,
+    Display,
+    From,
+    FromStr,
+    Into,
+    PartialEq,
+    Eq,
+    Hash,
+    Deserialize,
+    Serialize,
+    Column,
 )]
 #[serde(transparent)]
 pub struct Markdown(pub String);
@@ -306,6 +331,7 @@ function setIndex(el, i) {{
 #[serde(transparent)]
 pub struct Json<T: ?Sized>(pub T);
 
+#[cfg(feature = "json")]
 impl<T: TS> TS for Json<T> {
     fn name() -> String {
         "Json".to_string()
@@ -327,6 +353,7 @@ impl<T: TS> TS for Json<T> {
     }
 }
 
+#[cfg(feature = "json")]
 impl<'r, T> sqlx::Decode<'r, DB> for Json<T>
 where
     sqlx::types::Json<T>: sqlx::Decode<'r, DB>,
@@ -339,6 +366,7 @@ where
         ))
     }
 }
+#[cfg(feature = "json")]
 impl<T> sqlx::Type<DB> for Json<T>
 where
     sqlx::types::Json<T>: sqlx::Type<DB>,
@@ -347,6 +375,7 @@ where
         <sqlx::types::Json<T> as sqlx::Type<DB>>::type_info()
     }
 }
+#[cfg(feature = "json")]
 impl<'q, T> sqlx::Encode<'q, DB> for Json<T>
 where
     for<'a> sqlx::types::Json<&'a T>: sqlx::Encode<'q, DB>,
@@ -385,5 +414,86 @@ impl<T: Column> Column for Json<T> {
 impl Column for Uuid {
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html!((self))
+    }
+}
+
+/********
+ * File *
+ ********/
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
+struct File {
+    /// name of the file created in `files_dir`
+    id: String,
+    /// original filename
+    name: String,
+}
+
+impl Input for File {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        _name_human: &str,
+        _ctx: &FormRenderContext,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="file" name=(name) value=[value.map(|v| &v.id)] {}
+        }
+    }
+}
+
+impl Column for File {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            a href=(format!("/uploads/{}", self.id)) {
+                (self.name)
+            }
+        }
+    }
+}
+
+/********
+ * Image *
+ ********/
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
+pub struct Image {
+    /// name of the file created in `files_dir`
+    pub id: String,
+    /// original filename
+    pub name: String,
+    pub alt_text: String,
+}
+
+impl Input for Image {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        _name_human: &str,
+        _ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            fieldset class="cms-image cms-prop-group" {
+                input type="file" accept="image/*" name=(name) value=[value.map(|v| &v.id)] {}
+                input
+                    type="text"
+                    name=(format!("{name}[alt_text]"))
+                    placeholder=(fl!(i18n, "image-alt-text"))
+                    class="cms-text-input cms-prop-container"
+                    value=[value.map(|v| &v.alt_text)] {}
+            }
+        }
+    }
+}
+
+impl Column for Image {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            a href=(format!("/uploads/{}", self.id)) {
+                (self.name)
+            } " (" (self.alt_text) ")"
+        }
     }
 }
