@@ -198,7 +198,6 @@ where
 impl<Tz: TimeZone> Input for DateTime<Tz>
 where
     for<'de> DateTime<Tz>: Deserialize<'de>,
-    Tz::Offset: std::fmt::Display,
 {
     fn render_input(
         value: Option<&Self>,
@@ -211,7 +210,7 @@ where
         let hidden_id = Uuid::new_v4();
         html! {
             input type="datetime-local" id=(input_id) class="cms-datetime-input" {}
-            input type="hidden" name=(name) id=(hidden_id) value=[value] {}
+            input type="hidden" name=(name) id=(hidden_id) value=[value.map(|v|v.to_rfc3339())] {}
             script type="module" {(PreEscaped(format!(r#"
 const input = document.getElementById("{input_id}");
 const hidden = document.getElementById("{hidden_id}");
@@ -227,11 +226,14 @@ document.getElementById("{}").addEventListener("submit", () => {{
         }
     }
 }
-impl<Tz: TimeZone> Column for DateTime<Tz> {
+impl<Tz: TimeZone> Column for DateTime<Tz>
+where
+    Tz::Offset: std::fmt::Display,
+{
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
             time datetime=(self.to_rfc3339()) {
-                (self.to_rfc2822())
+                (self.to_string())
             }
         }
     }
