@@ -11,6 +11,7 @@ use axum::{
 use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
 use include_dir::{include_dir, Dir, DirEntry};
 use rust_embed::RustEmbed;
+use tower_http::services::ServeDir;
 use unic_langid::LanguageIdentifier;
 
 use crate::{
@@ -87,11 +88,13 @@ where
     S: ContextExt<Context<S>> + 'static,
 {
     pub fn build(self, uploads_dir: impl Into<PathBuf>, db: sqlx::Pool<DB>) -> Router {
+        let uploads_dir = uploads_dir.into();
         self.router
+            .nest_service("/uploads", ServeDir::new(&uploads_dir))
             .with_state(Context {
                 names_plural: self.names_plural,
                 db,
-                uploads_dir: uploads_dir.into(),
+                uploads_dir,
                 ext: self.state_ext,
             })
             .layer(middleware::from_fn(|mut req: Request, next: Next| {

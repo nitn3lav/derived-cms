@@ -35,6 +35,7 @@ sqlx = "0.7.3"
 sqlx-core = "0.7.3"
 thiserror = "1.0.56"
 tokio = { version = "1.35.1", features = ["fs"] }
+tower-http = { version = "0.5.1", features = ["fs"] }
 tracing = "0.1.40"
 ts-rs = "7.1.0"
 unic-langid = "0.9.4"
