@@ -58,7 +58,7 @@ pub fn entity_inputs<E: Entity>(i18n: &FluentLanguageLoader, value: Option<&E>) 
             @for f in Entity::inputs(value) {
                 div class="cms-prop-container" {
                     label class="cms-prop-label" {(f.name)}
-                    (f.value.render_input(f.name, f.name, &ctx, i18n))
+                    (f.value.render_input(f.name, f.name, true, &ctx, i18n))
                 }
             }
             button class="cms-button" type="submit" {
@@ -182,6 +182,7 @@ pub fn input_enum<'a>(
     i18n: &FluentLanguageLoader,
     variants: &[EnumVariant<'a>],
     selected: usize,
+    required: bool,
 ) -> Markup {
     let id_type = Uuid::new_v4();
     let id_data = Uuid::new_v4();
@@ -208,7 +209,7 @@ pub fn input_enum<'a>(
                 };
                 fieldset class=(class) disabled[i != selected] {
                     @if let Some(ref data) = variant.content {
-                        (data.value.render_input(data.name, &variant.value.to_case(Case::Title), ctx, i18n))
+                        (data.value.render_input(data.name, &variant.value.to_case(Case::Title), required, ctx, i18n))
                     }
                 }
             }

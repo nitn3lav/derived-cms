@@ -56,7 +56,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                     Some(quote! {
                         match value {
                             ::std::option::Option::Some(Self::#ident(#fields)) => {
-                                _selected_idx = #i;
+                                selected_idx = #i;
                                 ::std::option::Option::Some(#fields)
                             },
                             _ => ::std::option::Option::None,
@@ -90,15 +90,15 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
         #[automatically_derived]
         impl #found_crate::Input for #ident {
             fn render_input(
-                value: Option<&Self>,
-                name: &str,
-                _name_human: &str,
+                value: ::std::option::Option<&Self>,
+                name: &::std::primitive::str,
+                _name_human: &::std::primitive::str,
+                required: ::std::primitive::bool,
                 ctx: &derived_cms::render::FormRenderContext,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
-                let mut _selected_idx = 0;
-                // TODO
-                #found_crate::render::input_enum(ctx, i18n, &[#x], _selected_idx)
+                let mut selected_idx = 0;
+                #found_crate::render::input_enum(ctx, i18n, &[#x], selected_idx, required)
             }
         }
     })

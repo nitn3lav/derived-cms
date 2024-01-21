@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate as derived_cms;
+use crate::{self as derived_cms};
 use crate::{input::InputInfo, render::FormRenderContext, Column, Input, DB};
 
 #[derive(Debug)]
@@ -95,11 +95,12 @@ impl Input for Text {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
+        required: bool,
         _ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="text" name=(name) placeholder=(name_human) class="cms-text-input" value=[value] {}
+            input type="text" name=(name) placeholder=(name_human) class="cms-text-input" value=[value] required[required] {}
         }
     }
 }
@@ -148,6 +149,7 @@ impl Input for Markdown {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
+        required: bool,
         _ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -156,7 +158,7 @@ impl Input for Markdown {
                 div class="cms-markdown-buttons" {
                     // TODO
                 }
-                textarea name=(name) placeholder=(name_human) value=[value] {}
+                textarea name=(name) placeholder=(name_human) value=[value] required[required] {}
             }
         }
     }
@@ -203,6 +205,7 @@ where
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -210,7 +213,7 @@ where
         let hidden_id = Uuid::new_v4();
         html! {
             input type="datetime-local" id=(input_id) class="cms-datetime-input" {}
-            input type="hidden" name=(name) id=(hidden_id) value=[value.map(|v|v.to_rfc3339())] {}
+            input type="hidden" name=(name) id=(hidden_id) value=[value.map(|v|v.to_rfc3339())] required[required] {}
             script type="module" {(PreEscaped(format!(r#"
 const input = document.getElementById("{input_id}");
 const hidden = document.getElementById("{hidden_id}");
@@ -248,6 +251,7 @@ impl Input for bool {
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
+        _required: bool,
         _ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -273,6 +277,7 @@ impl<T: Input> Input for Vec<T> {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -285,12 +290,12 @@ impl<T: Input> Input for Vec<T> {
                 @if let Some(v) = value {
                     @for (i, v) in v.iter().enumerate() {
                         fieldset class="cms-list-element" {
-                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, ctx, i18n))
+                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
                         }
                     }
                 }
                 fieldset id=(template_id) class="cms-list-element" {
-                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, ctx, i18n))
+                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, required, ctx, i18n))
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
@@ -318,6 +323,36 @@ function setIndex(el, i) {{
 }}
                 "#).trim()))}
             }
+        }
+    }
+}
+
+/**********
+ * Option *
+ **********/
+
+impl<T: Input> Input for Option<T> {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        ctx: &FormRenderContext,
+        i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        let value = match value {
+            Some(v) => v.as_ref(),
+            None => None,
+        };
+        T::render_input(value, name, name_human, required, ctx, i18n)
+    }
+}
+
+impl<T: Column> Column for Option<T> {
+    fn render(&self, i18n: &FluentLanguageLoader) -> Markup {
+        match self {
+            Some(v) => v.render(i18n),
+            None => html!(),
         }
     }
 }
@@ -396,10 +431,11 @@ impl<T: Input> Input for Json<T> {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
-        T::render_input(value.map(|v| &v.0), name, name_human, ctx, i18n)
+        T::render_input(value.map(|v| &v.0), name, name_human, required, ctx, i18n)
     }
 }
 #[cfg(feature = "json")]
@@ -436,11 +472,12 @@ impl Input for File {
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
+        required: bool,
         _ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="file" name=(name) value=[value.map(|v| &v.id)] {}
+            input type="file" name=(name) value=[value.map(|v| &v.id)] required[required] {}
         }
     }
 }
@@ -473,12 +510,13 @@ impl Input for Image {
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
+        required: bool,
         _ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
             fieldset class="cms-image cms-prop-group" {
-                input type="file" accept="image/*" name=(name) value=[value.map(|v| &v.id)] {}
+                input type="file" accept="image/*" name=(name) value=[value.map(|v| &v.id)] required[required] {}
                 input
                     type="text"
                     name=(format!("{name}[alt_text]"))

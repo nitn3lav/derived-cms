@@ -13,6 +13,7 @@ pub trait Input: Debug {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup;
@@ -24,6 +25,7 @@ pub trait DynInput: Debug {
         &self,
         name: &str,
         name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup;
@@ -34,10 +36,11 @@ impl<T: Input> DynInput for Option<&T> {
         &self,
         name: &str,
         name_human: &str,
+        required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
-        Input::render_input(self.as_deref(), name, name_human, ctx, i18n)
+        Input::render_input(self.as_deref(), name, name_human, required, ctx, i18n)
     }
 }
 
