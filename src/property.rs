@@ -265,7 +265,7 @@ impl Input for bool {
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="checkbox" name=(name) checked[*value.unwrap_or(&false)] {}
+            input type="checkbox" name=(name) value="true" checked[*value.unwrap_or(&false)] {}
         }
     }
 }
