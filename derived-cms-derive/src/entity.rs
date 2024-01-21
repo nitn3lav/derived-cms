@@ -141,6 +141,9 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             fn id(&self) -> &#id_type {
                 &self.#id_ident
             }
+            fn set_id(&mut self, id: #id_type) {
+                self.#id_ident = id;
+            }
 
             #column_names
             #column_values

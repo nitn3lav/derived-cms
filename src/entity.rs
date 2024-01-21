@@ -27,6 +27,7 @@ pub trait Entity:
 {
     /// should usually be an UUID
     type Id: for<'de> Deserialize<'de>
+        + Clone
         + Display
         + Serialize
         + sqlx::Type<DB>
@@ -40,6 +41,7 @@ pub trait Entity:
 
     /// should return the value of the field used as primary key.
     fn id(&self) -> &Self::Id;
+    fn set_id(&mut self, id: Self::Id);
 
     fn column_names() -> GenericArray<&'static str, Self::NumberOfColumns>;
     fn column_values(&self) -> GenericArray<&dyn Column, Self::NumberOfColumns>;

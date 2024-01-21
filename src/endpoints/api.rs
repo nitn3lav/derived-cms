@@ -95,9 +95,10 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     ctx: State<S>,
     Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
     Path(id): Path<E::Id>,
-    Json(new): Json<E>,
+    Json(mut new): Json<E>,
 ) -> Result<Json<E>, ApiError<impl Error + Send>> {
     let db = ctx.db();
+    new.set_id(id.clone());
     let old = E::fetch_one(id, db).await?;
     Ok(Json(
         E::on_update(old, new, ext)

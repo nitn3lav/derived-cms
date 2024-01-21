@@ -160,7 +160,7 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
     let db = ctx.db();
-    let new = parse_form::<E>(form, ctx.uploads_dir())
+    let mut new = parse_form::<E>(form, ctx.uploads_dir())
         .await
         .map_err(|e| {
             AppError::new(
@@ -178,6 +178,7 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
                 ),
             )
         })?;
+    new.set_id(id.clone());
     let old = E::fetch_one(id, db).await.map_err(|e| {
         AppError::new(
             fl!(
@@ -347,6 +348,5 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
             }
         };
     }
-    dbg!(&qs);
     Ok(serde_qs::Config::new(5, false).deserialize_str(&qs)?)
 }
