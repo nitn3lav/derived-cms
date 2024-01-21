@@ -153,12 +153,21 @@ impl Input for Markdown {
         _ctx: &FormRenderContext,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
+        let id = Uuid::new_v4();
         html! {
             div class="cms-markdown-editor" {
                 div class="cms-markdown-buttons" {
                     // TODO
                 }
-                textarea name=(name) placeholder=(name_human) value=[value] required[required] {}
+                textarea name=(name) placeholder=(name_human) required[required] id=(id) {
+                    (value.map(|v| v.0.as_ref()).unwrap_or(""))
+                }
+                script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
+                script {
+                    (PreEscaped(format!(r#"
+new EasyMDE({{ element: document.getElementById("{id}") }});
+                    "#)))
+                }
             }
         }
     }
