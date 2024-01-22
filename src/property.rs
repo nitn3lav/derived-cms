@@ -345,7 +345,7 @@ impl<T: Input> Input for Option<T> {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
-        required: bool,
+        _required: bool,
         ctx: &FormRenderContext,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -353,7 +353,7 @@ impl<T: Input> Input for Option<T> {
             Some(v) => v.as_ref(),
             None => None,
         };
-        T::render_input(value, name, name_human, required, ctx, i18n)
+        T::render_input(value, name, name_human, false, ctx, i18n)
     }
 }
 
