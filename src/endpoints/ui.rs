@@ -320,15 +320,13 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
                 if filename.contains('/') {
                     return Err(ParseFormError::FilenameSlash(filename.to_string()));
                 }
-                let new_filename = format!("{id}_{filename}");
-                let filename = urlencoding::encode(filename);
-                let id = urlencoding::encode(&new_filename);
+                let filename_escaped = urlencoding::encode(filename);
                 if !qs.is_empty() {
                     qs.push_str("&");
                 }
-                qs.push_str(&format!("{name}[name]={filename}&{name}[id]={id}"));
+                qs.push_str(&format!("{name}[name]={filename_escaped}&{name}[id]={id}"));
                 tokio::fs::create_dir_all(&files_dir).await?;
-                let path = files_dir.join(new_filename);
+                let path = files_dir.join(id.to_string()).join(filename);
                 tokio::fs::File::create(path)
                     .await?
                     .write(&field.bytes().await?)

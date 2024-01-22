@@ -471,7 +471,7 @@ impl Column for Uuid {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 pub struct File {
     /// name of the file created in `files_dir`
-    id: String,
+    id: Uuid,
     /// original filename
     name: String,
 }
@@ -483,8 +483,8 @@ impl<'de> Deserialize<'de> for File {
     {
         #[derive(Debug, Deserialize)]
         struct File {
-            id: Option<String>,
-            id_old: Option<String>,
+            id: Option<Uuid>,
+            id_old: Option<Uuid>,
             name: Option<String>,
             name_old: Option<String>,
         }
