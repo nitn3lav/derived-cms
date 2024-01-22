@@ -289,12 +289,11 @@ enum ParseFormError {
     ),
     #[error("File names must not contain '/': {0}")]
     FilenameSlash(String),
-    #[error("Failed to deserialize: {0}")]
-    Deserialize(
-        #[from]
-        #[source]
-        serde_qs::Error,
-    ),
+    #[error("Failed to deserialize: {serde:#}: {query_string}")]
+    Deserialize {
+        serde: serde_qs::Error,
+        query_string: String,
+    },
 }
 
 /// Parse multipart/form-data with nested fields like in [serde_qs].
@@ -316,7 +315,7 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
         let name = field.name().ok_or(ParseFormError::NameMissing)?;
         let name = urlencoding::encode(name);
         match field.file_name() {
-            Some(filename) => {
+            Some(filename) if !filename.is_empty() => {
                 let id = Uuid::new_v4();
                 if filename.contains('/') {
                     return Err(ParseFormError::FilenameSlash(filename.to_string()));
@@ -346,7 +345,13 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
                 qs.push_str("=");
                 qs.push_str(&value);
             }
+            _ => {}
         };
     }
-    Ok(serde_qs::Config::new(5, false).deserialize_str(&qs)?)
+    Ok(serde_qs::Config::new(5, false)
+        .deserialize_str(&qs)
+        .map_err(|e| ParseFormError::Deserialize {
+            serde: e,
+            query_string: qs,
+        })?)
 }

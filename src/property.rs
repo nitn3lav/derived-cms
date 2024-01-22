@@ -468,12 +468,39 @@ impl Column for Uuid {
  * File *
  ********/
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
-struct File {
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+pub struct File {
     /// name of the file created in `files_dir`
     id: String,
     /// original filename
     name: String,
+}
+
+impl<'de> Deserialize<'de> for File {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Debug, Deserialize)]
+        struct File {
+            id: Option<String>,
+            id_old: Option<String>,
+            name: Option<String>,
+            name_old: Option<String>,
+        }
+        let f = File::deserialize(deserializer)?;
+        let id =
+            f.id.or(f.id_old)
+                .map(Into::into)
+                .ok_or(serde::de::Error::missing_field("id"))?;
+        let name = f
+            .name
+            .or(f.name_old)
+            .map(Into::into)
+            .ok_or(serde::de::Error::missing_field("name"))?;
+        // TODO: check if file exists
+        Ok(Self { id, name })
+    }
 }
 
 impl Input for File {
@@ -486,7 +513,9 @@ impl Input for File {
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="file" name=(name) value=[value.map(|v| &v.id)] required[required] {}
+            input type="hidden" name=(format!("{name}[id_old]")) value=[value.map(|v| &v.id)] {}
+            input type="hidden" name=(format!("{name}[name_old]")) value=[value.map(|v| &v.name)] {}
+            input type="file" name=(name) required[required && value.is_none()] {}
         }
     }
 }
@@ -507,11 +536,9 @@ impl Column for File {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
 pub struct Image {
-    /// name of the file created in `files_dir`
-    pub id: String,
-    /// original filename
-    pub name: String,
-    pub alt_text: String,
+    #[serde(flatten)]
+    pub file: File,
+    pub alt_text: Option<String>,
 }
 
 impl Input for Image {
@@ -525,13 +552,15 @@ impl Input for Image {
     ) -> Markup {
         html! {
             fieldset class="cms-image cms-prop-group" {
-                input type="file" accept="image/*" name=(name) value=[value.map(|v| &v.id)] required[required] {}
+                input type="hidden" name=(format!("{name}[id_old]")) value=[value.map(|v| &v.file.id)] {}
+                input type="hidden" name=(format!("{name}[name_old]")) value=[value.map(|v| &v.file.name)] {}
+                input type="file" accept="image/*" name=(name) required[required && value.is_none()] {}
                 input
                     type="text"
                     name=(format!("{name}[alt_text]"))
                     placeholder=(fl!(i18n, "image-alt-text"))
                     class="cms-text-input cms-prop-container"
-                    value=[value.map(|v| &v.alt_text)] {}
+                    value=[value.map(|v| v.alt_text.as_deref().unwrap_or_default())] {}
             }
         }
     }
@@ -540,9 +569,12 @@ impl Input for Image {
 impl Column for Image {
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
-            a href=(format!("/uploads/{}", self.id)) {
-                (self.name)
-            } " (" (self.alt_text) ")"
+            a href=(format!("/uploads/{}", self.file.id)) {
+                (self.file.name)
+            }
+            @if let Some(alt_text) = &self.alt_text {
+                " (" (alt_text) ")"
+            }
         }
     }
 }
