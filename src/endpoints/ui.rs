@@ -325,9 +325,9 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
                     qs.push_str("&");
                 }
                 qs.push_str(&format!("{name}[name]={filename_escaped}&{name}[id]={id}"));
-                tokio::fs::create_dir_all(&files_dir).await?;
-                let path = files_dir.join(id.to_string()).join(filename);
-                tokio::fs::File::create(path)
+                let path = files_dir.join(id.to_string());
+                tokio::fs::create_dir_all(&path).await?;
+                let path = path.join(filename);
                     .await?
                     .write(&field.bytes().await?)
                     .await?;
