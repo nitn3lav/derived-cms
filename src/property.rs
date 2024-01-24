@@ -569,7 +569,7 @@ impl Input for Image {
 impl Column for Image {
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
-            a href=(format!("/uploads/{}", self.file.id)) {
+            a href=(format!("/uploads/{}/{}", self.file.id, self.file.name)) {
                 (self.file.name)
             }
             @if let Some(alt_text) = &self.alt_text {
