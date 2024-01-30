@@ -476,6 +476,12 @@ pub struct File {
     name: String,
 }
 
+impl File {
+    pub fn url(&self) -> String {
+        format!("/uploads/{}/{}", self.id, self.name)
+    }
+}
+
 impl<'de> Deserialize<'de> for File {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -523,7 +529,7 @@ impl Input for File {
 impl Column for File {
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
-            a href=(format!("/uploads/{}", self.id)) {
+            a href=(self.url()) {
                 (self.name)
             }
         }
@@ -569,7 +575,7 @@ impl Input for Image {
 impl Column for Image {
     fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
         html! {
-            a href=(format!("/uploads/{}/{}", self.file.id, self.file.name)) {
+            a href=(self.file.url()) {
                 (self.file.name)
             }
             @if let Some(alt_text) = &self.alt_text {
