@@ -9,7 +9,7 @@ edition = "2021"
 convert_case = "0.6.0"
 darling = "0.20.3"
 itertools = "0.12.0"
-proc-macro-crate = "2.0.1"
+proc-macro-crate = "3.1.0"
 proc-macro2 = "1.0.73"
 quote = "1.0.34"
 syn = { version = "2.0.44", features = ["full"] }
