@@ -20,9 +20,7 @@ generic-array = "1.0.0"
 i18n-embed = { version = "0.14.1", features = ["fluent-system"] }
 i18n-embed-fl = "0.7.0"
 include_dir = "0.7.3"
-maud = { git = "https://github.com/lambda-fairy/maud", branch = "main", version = "0.25.0", features = [
-    "axum",
-] }
+maud = { version = "0.26.0", features = ["axum"] }
 mime_guess = "2.0.4"
 ormlite = { version = "0.18.0", features = ["uuid", "chrono", "json"] }
 regex = "1.10.2"
