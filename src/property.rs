@@ -494,7 +494,7 @@ impl<'de> Deserialize<'de> for File {
             name: Option<String>,
             name_old: Option<String>,
         }
-        let f = File::deserialize(deserializer)?;
+        let f = File::deserialize(deserializer).map_err(|e| e)?;
         let id =
             f.id.or(f.id_old)
                 .map(Into::into)
@@ -519,8 +519,10 @@ impl Input for File {
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="hidden" name=(format!("{name}[id_old]")) value=[value.map(|v| &v.id)] {}
-            input type="hidden" name=(format!("{name}[name_old]")) value=[value.map(|v| &v.name)] {}
+            @if let Some(ref v) = value {
+                input type="hidden" name=(format!("{name}[id_old]")) value=(v.id) {}
+                input type="hidden" name=(format!("{name}[name_old]")) value=(v.name) {}
+            }
             input type="file" name=(name) required[required && value.is_none()] {}
         }
     }
@@ -536,9 +538,9 @@ impl Column for File {
     }
 }
 
-/********
+/*********
  * Image *
- ********/
+ *********/
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
 pub struct Image {
@@ -558,8 +560,10 @@ impl Input for Image {
     ) -> Markup {
         html! {
             fieldset class="cms-image cms-prop-group" {
-                input type="hidden" name=(format!("{name}[id_old]")) value=[value.map(|v| &v.file.id)] {}
-                input type="hidden" name=(format!("{name}[name_old]")) value=[value.map(|v| &v.file.name)] {}
+                @if let Some(ref v) = value {
+                    input type="hidden" name=(format!("{name}[id_old]")) value=(v.file.id) {}
+                    input type="hidden" name=(format!("{name}[name_old]")) value=(v.file.name) {}
+                }
                 input type="file" accept="image/*" name=(name) required[required && value.is_none()] {}
                 input
                     type="text"
