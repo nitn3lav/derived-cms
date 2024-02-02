@@ -156,18 +156,15 @@ impl Input for Markdown {
         let id = Uuid::new_v4();
         html! {
             div class="cms-markdown-editor" {
-                div class="cms-markdown-buttons" {
-                    // TODO
-                }
-                textarea name=(name) placeholder=(name_human) required[required] id=(id) {
+                textarea
+                    name=(name)
+                    placeholder=(name_human)
+                    required[required]
+                    id=(id)
+                    onmount="new EasyMDE({ element: this })" {
                     (value.map(|v| v.0.as_ref()).unwrap_or(""))
                 }
                 script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
-                script {
-                    (PreEscaped(format!(r#"
-new EasyMDE({{ element: document.getElementById("{id}") }});
-                    "#)))
-                }
             }
         }
     }
@@ -303,7 +300,7 @@ impl<T: Input> Input for Vec<T> {
                         }
                     }
                 }
-                fieldset id=(template_id) class="cms-list-element" style="display: none" {
+                fieldset id=(template_id) class="cms-list-element" style="display: none" onmount="return true" {
                     (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
                 }
                 button id=(btn_id) {"+"}
@@ -314,11 +311,12 @@ const template = document.getElementById("{template_id}");
 template.remove();
 template.removeAttribute("style");
 btn.addEventListener("click", (e) => {{
+    e.preventDefault();
     let el = template.cloneNode(true);
     el.removeAttribute("id");
     setIndex(el, list.childElementCount - 2)
     list.insertBefore(el, btn);
-    e.preventDefault();
+    callOnMountRecursive(el);
 }});
 function setIndex(el, i) {{
     for (const e of el.querySelectorAll("[name]")) {{

@@ -4,8 +4,7 @@ use axum::extract::State;
 use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
-use maud::{html, Markup, DOCTYPE};
-use tracing::trace;
+use maud::{html, Markup, PreEscaped, DOCTYPE};
 use uuid::Uuid;
 
 use crate::{context::ContextTrait, property::EnumVariant, Entity};
@@ -67,6 +66,10 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
             }
             button class="cms-button" type="submit" {
                 (fl!(i18n, "entity-inputs-submit"))
+            }
+            script src="/js/callOnMountRecursive.js" {}
+            script {
+                (PreEscaped(format!(r#"callOnMountRecursive(document.getElementById("{form_id}"));"#)))
             }
         }
     }
@@ -199,8 +202,8 @@ pub fn input_enum<'a>(
                     name=(variant.name)
                     value=(variant.value)
                     id=(id)
-                    onchange="cmsEnumInputOnchange(this)"
-                    checked[i == selected] {}
+                    checked[i == selected]
+                    onchange="cmsEnumInputOnchange(this)" {}
                 label for=(id) {(variant.value.to_case(Case::Title))}
             }
         }
