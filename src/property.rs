@@ -303,7 +303,7 @@ impl<T: Input> Input for Vec<T> {
                         }
                     }
                 }
-                fieldset id=(template_id) class="cms-list-element" {
+                fieldset id=(template_id) class="cms-list-element" style="display: none" {
                     (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
                 }
                 button id=(btn_id) {"+"}
@@ -312,6 +312,7 @@ const btn = document.getElementById("{btn_id}");
 const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
 template.remove();
+template.removeAttribute("style");
 btn.addEventListener("click", (e) => {{
     let el = template.cloneNode(true);
     el.removeAttribute("id");
