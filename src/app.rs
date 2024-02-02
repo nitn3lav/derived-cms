@@ -63,9 +63,9 @@ impl<S, SE> App<S, SE>
 where
     S: ContextExt<Context<S>> + 'static,
 {
-    pub fn entity<E: Entity + Send + Sync>(mut self) -> Self {
+    pub fn entity<E: Entity<Context<S>> + Send + Sync>(mut self) -> Self {
         self.names_plural.insert(E::name_plural());
-        self.router = self.router.merge(E::routes::<Context<S>>());
+        self.router = self.router.merge(E::routes());
         self
     }
 }

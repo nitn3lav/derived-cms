@@ -8,7 +8,7 @@ use axum::extract::FromRef;
 use crate::DB;
 
 /// Trait implemented by the context available in all endpoints using [`axum::extract::State`].
-pub trait ContextTrait: Clone + Send + Sync {
+pub trait ContextTrait: Clone + Send + Sync + 'static {
     type Ext: ContextExt<Self>;
 
     fn db(&self) -> &sqlx::Pool<DB>;
@@ -34,7 +34,7 @@ impl<E: ContextExt<Self>> Clone for Context<E> {
         }
     }
 }
-impl<E: ContextExt<Self>> ContextTrait for Context<E> {
+impl<E: ContextExt<Self> + 'static> ContextTrait for Context<E> {
     type Ext = E;
 
     fn db(&self) -> &sqlx::Pool<DB> {

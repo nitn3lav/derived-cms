@@ -5,6 +5,7 @@ use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
 use maud::{html, Markup, DOCTYPE};
+use tracing::trace;
 use uuid::Uuid;
 
 use crate::{context::ContextTrait, property::EnumVariant, Entity};
@@ -50,7 +51,10 @@ pub fn sidebar(
     }
 }
 
-pub fn entity_inputs<E: Entity>(i18n: &FluentLanguageLoader, value: Option<&E>) -> Markup {
+pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
+    i18n: &FluentLanguageLoader,
+    value: Option<&E>,
+) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
     let ctx = FormRenderContext { form_id };
     html! {
@@ -68,7 +72,7 @@ pub fn entity_inputs<E: Entity>(i18n: &FluentLanguageLoader, value: Option<&E>) 
     }
 }
 
-pub fn entity_list_page<E: Entity>(
+pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
     ctx: State<impl ContextTrait>,
     i18n: &FluentLanguageLoader,
     entities: &[E],
@@ -149,7 +153,7 @@ pub fn confirm_delete_modal(
     }
 }
 
-pub fn entity_page<E: Entity>(
+pub fn entity_page<E: Entity<S>, S: ContextTrait>(
     ctx: State<impl ContextTrait>,
     i18n: &FluentLanguageLoader,
     entity: Option<&E>,
@@ -158,12 +162,12 @@ pub fn entity_page<E: Entity>(
         (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
             h1 {(fl!(i18n, "edit-entity-title", name = E::name().to_case(Case::Title)))}
-            (entity_inputs::<E>(i18n, entity))
+            (entity_inputs::<E, S>(i18n, entity))
         }
     })
 }
 
-pub fn add_entity_page<E: Entity>(
+pub fn add_entity_page<E: Entity<S>, S: ContextTrait>(
     ctx: State<impl ContextTrait>,
     i18n: &FluentLanguageLoader,
     entity: Option<&E>,
@@ -172,7 +176,7 @@ pub fn add_entity_page<E: Entity>(
         (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
             h1 {(fl!(i18n, "create-entity-title", name = E::name().to_case(Case::Title)))}
-            (entity_inputs::<E>(i18n, entity))
+            (entity_inputs::<E, S>(i18n, entity))
         }
     })
 }

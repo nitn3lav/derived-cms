@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{multipart::MultipartError, Extension, Multipart, Path, State},
+    extract::{multipart::MultipartError, Multipart, Path, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
+    Extension,
 };
 use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
@@ -11,7 +12,7 @@ use i18n_embed_fl::fl;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 use uuid::Uuid;
 
 use crate::{context::ContextTrait, entity::EntityHooks, render, Entity};
@@ -38,7 +39,7 @@ impl IntoResponse for AppError {
     }
 }
 
-pub async fn get_entities<E: Entity, S: ContextTrait>(
+pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -56,7 +57,7 @@ pub async fn get_entities<E: Entity, S: ContextTrait>(
     Ok(render::entity_list_page(ctx, &i18n, &r))
 }
 
-pub async fn get_entity<E: Entity, S: ContextTrait>(
+pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
     Path(id): Path<E::Id>,
@@ -75,17 +76,17 @@ pub async fn get_entity<E: Entity, S: ContextTrait>(
     Ok(render::entity_page(ctx, &i18n, Some(&r)))
 }
 
-pub async fn get_add_entity<E: Entity, S: ContextTrait>(
+pub async fn get_add_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
 ) -> impl IntoResponse {
-    render::add_entity_page::<E>(ctx, &i18n, None)
+    render::add_entity_page::<E, S>(ctx, &i18n, None)
 }
 
-pub async fn post_add_entity<E: Entity, S: ContextTrait>(
+pub async fn post_add_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
     let e = parse_form::<E>(form, ctx.uploads_dir())
@@ -152,10 +153,10 @@ pub async fn post_add_entity<E: Entity, S: ContextTrait>(
     Ok(Redirect::to(uri))
 }
 
-pub async fn post_entity<E: Entity, S: ContextTrait>(
+pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     Path(id): Path<E::Id>,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
@@ -219,10 +220,10 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     Ok(render::entity_page(ctx, &i18n, Some(&e)))
 }
 
-pub async fn delete_entity<E: Entity, S: ContextTrait>(
+pub async fn delete_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
     let db = ctx.db();

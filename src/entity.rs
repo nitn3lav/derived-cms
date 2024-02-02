@@ -14,8 +14,8 @@ use crate::{column::Column, context::ContextTrait, endpoints, input::InputInfo, 
 
 pub use derived_cms_derive::Entity;
 
-pub trait Entity:
-    EntityHooks
+pub trait Entity<S: ContextTrait>:
+    EntityHooks<S>
     + for<'de> Deserialize<'de>
     + Serialize
     + Model<DB>
@@ -48,7 +48,7 @@ pub trait Entity:
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 
     /// returns a [Router] with all generated HTTP endponts
-    fn routes<S: ContextTrait + 'static>() -> Router<S> {
+    fn routes() -> Router<S> {
         let name = Self::name().to_case(Case::Kebab);
         let name = urlencoding::encode(&name);
         let name_pl = Self::name_plural().to_case(Case::Kebab);
@@ -104,14 +104,14 @@ pub trait Entity:
     }
 }
 
-pub trait EntityHooks: Send + Sized {
+pub trait EntityHooks<S: ContextTrait>: Send + Sized {
     /// type of an Extension that can be used in hooks and must be added in a [middleware][axum::middleware]
-    type RequestExt<S: ContextTrait>: FromRequestParts<S> + Send + Sync + Clone;
+    type RequestExt: FromRequestParts<S> + Send + Sync + Clone;
 
     /// called before an [`Entity`] is inserted into the database
     fn on_create(
         self,
-        _ext: Self::RequestExt<impl ContextTrait>,
+        _ext: Self::RequestExt,
     ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
         async { Result::<Self, Infallible>::Ok(self) }
     }
@@ -120,7 +120,7 @@ pub trait EntityHooks: Send + Sized {
     fn on_update(
         _old: Self,
         new: Self,
-        _ext: Self::RequestExt<impl ContextTrait>,
+        _ext: Self::RequestExt,
     ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
         async { Result::<Self, Infallible>::Ok(new) }
     }
@@ -128,7 +128,7 @@ pub trait EntityHooks: Send + Sized {
     /// called before an [`Entity`] is updated
     fn on_delete(
         self,
-        _ext: Self::RequestExt<impl ContextTrait>,
+        _ext: Self::RequestExt,
     ) -> impl Future<Output = Result<Self, impl Error + Send>> + Send {
         async { Result::<Self, Infallible>::Ok(self) }
     }

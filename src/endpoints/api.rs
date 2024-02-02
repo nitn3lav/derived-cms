@@ -3,7 +3,7 @@ use std::{convert::Infallible, error::Error, fmt::Display};
 use axum::{
     extract::{Path, Query, State},
     response::{IntoResponse, Response},
-    Extension, Json,
+    Json,
 };
 use sqlmo::query::Where;
 use thiserror::Error;
@@ -26,7 +26,7 @@ impl<H: Error + Send> IntoResponse for ApiError<H> {
     }
 }
 
-pub async fn get_entities<E: Entity, S: ContextTrait>(
+pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Query(filters): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<E>>, ApiError<Infallible>> {
@@ -68,7 +68,7 @@ fn sql_binary(s: &str) -> Option<impl Display + '_> {
     ((s.len() & 1 == 0) && s.chars().all(|c| char::is_ascii_hexdigit(&c))).then_some(R(s))
 }
 
-pub async fn get_entity<E: Entity, S: ContextTrait>(
+pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Path(id): Path<E::Id>,
 ) -> Result<Json<E>, ApiError<Infallible>> {
@@ -76,9 +76,9 @@ pub async fn get_entity<E: Entity, S: ContextTrait>(
 }
 
 /// create a new entity
-pub async fn post_entities<E: Entity, S: ContextTrait>(
+pub async fn post_entities<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     Json(data): Json<E>,
 ) -> Result<Json<E>, ApiError<impl Error + Send>> {
     Ok(Json(
@@ -91,9 +91,9 @@ pub async fn post_entities<E: Entity, S: ContextTrait>(
 }
 
 /// update existing entity
-pub async fn post_entity<E: Entity, S: ContextTrait>(
+pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     Path(id): Path<E::Id>,
     Json(mut new): Json<E>,
 ) -> Result<Json<E>, ApiError<impl Error + Send>> {
@@ -109,9 +109,9 @@ pub async fn post_entity<E: Entity, S: ContextTrait>(
     ))
 }
 
-pub async fn delete_entity<E: Entity, S: ContextTrait>(
+pub async fn delete_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
-    Extension(ext): Extension<<E as EntityHooks>::RequestExt<S>>,
+    ext: <E as EntityHooks<S>>::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<(), ApiError<impl Error + Send>> {
     let db = ctx.db();

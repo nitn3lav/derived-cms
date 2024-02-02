@@ -113,8 +113,8 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let hooks = if !struct_attr.hooks {
         quote! {
             #[automatically_derived]
-            impl #found_crate::EntityHooks for #ident {
-                type RequestExt<S: #found_crate::context::ContextTrait> = ();
+            impl<S: #found_crate::context::ContextTrait> #found_crate::EntityHooks<S> for #ident {
+                type RequestExt = ();
             }
         }
     } else {
@@ -123,9 +123,10 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
 
     Ok(quote! {
         #[automatically_derived]
-        impl #found_crate::Entity for #ident
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Entity<S> for #ident
         where
-            Self: #found_crate::derive::ormlite::Model<#found_crate::DB>
+            Self: #found_crate::derive::ormlite::Model<#found_crate::DB>,
+            Self: #found_crate::EntityHooks<S>,
         {
             type Id = #id_type;
 

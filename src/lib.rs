@@ -40,7 +40,7 @@
 //!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://.tmp/db.sqlite")
 //!         .await
 //!         .unwrap();
-//!     let app = App::new().entity::<Post>().build(db);
+//!     let app = App::new().entity::<Post>().build("uploads", db);
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 //!     axum::serve(listener, app).await.unwrap();
 //! }
@@ -73,21 +73,21 @@
 //! #     draft: bool,
 //! # }
 //! #
-//! impl EntityHooks for Post {
+//! impl<S: ContextTrait> EntityHooks<S> for Post {
 //!     // can be used to pass state from a custom middleware
-//!     type RequestExt<S: ContextTrait> = ();
+//!     type RequestExt = ();
 //!
-//!     async fn on_create(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
+//!     async fn on_create(self, ext: Self::RequestExt) -> Result<Self, Infallible> {
 //!         // do some stuff
 //!         Ok(self)
 //!     }
 //!
-//!     async fn on_update(old: Self, new: Self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
+//!     async fn on_update(old: Self, new: Self, ext: Self::RequestExt) -> Result<Self, Infallible> {
 //!         // do some stuff
 //!         Ok(new)
 //!     }
 //!
-//!     async fn on_delete(self, ext: Self::RequestExt<impl ContextTrait>) -> Result<Self, Infallible> {
+//!     async fn on_delete(self, ext: Self::RequestExt) -> Result<Self, Infallible> {
 //!         // do some stuff
 //!         Ok(self)
 //!     }
