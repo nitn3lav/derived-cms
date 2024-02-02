@@ -304,7 +304,7 @@ impl<T: Input> Input for Vec<T> {
                     }
                 }
                 fieldset id=(template_id) class="cms-list-element" {
-                    (Input::render_input(Option::<&T>::None, &format!("{name}[0]"), name_human, required, ctx, i18n))
+                    (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
