@@ -174,7 +174,7 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
                 let path = path.join(filename);
                 tokio::fs::File::create(path)
                     .await?
-                    .write(&field.bytes().await?)
+                    .write_all(&field.bytes().await?)
                     .await?;
                 // TODO: delete newly created files on error
             }
