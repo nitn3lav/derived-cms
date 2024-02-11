@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::Serialize;
 use thiserror::Error;
+use tracing::debug;
 
 use crate::{context::ContextTrait, entity};
 
@@ -40,6 +41,7 @@ pub async fn post_entities<E: entity::Create<S>, S: ContextTrait>(
     ext: E::RequestExt,
     Json(data): Json<E::Create>,
 ) -> Result<Json<E>, ApiError<E::Error>> {
+    debug!("creating entity {}", E::name());
     Ok(Json(E::create(data, ext).await?))
 }
 
@@ -49,6 +51,7 @@ pub async fn post_entity<E: entity::Update<S>, S: ContextTrait>(
     Path(id): Path<E::Id>,
     Json(data): Json<E::Update>,
 ) -> Result<Json<E>, ApiError<E::Error>> {
+    debug!("updating entity {}", E::name());
     Ok(Json(E::update(&id, data, ext).await?))
 }
 
@@ -56,5 +59,6 @@ pub async fn delete_entity<E: entity::Delete<S>, S: ContextTrait>(
     ext: E::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<(), ApiError<E::Error>> {
+    debug!("deleting entity {}", E::name());
     Ok(E::delete(&id, ext).await?)
 }

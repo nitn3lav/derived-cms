@@ -11,7 +11,7 @@ use i18n_embed_fl::fl;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tracing::error;
+use tracing::{debug, error};
 use uuid::Uuid;
 
 use crate::{app::AppError, context::ContextTrait, entity, render, Entity};
@@ -57,6 +57,7 @@ pub async fn post_add_entity<E: entity::Create<S>, S: ContextTrait>(
     ext: E::RequestExt,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
+    debug!("creating entity {}", E::name());
     let e = parse_form::<E::Create>(form, ctx.uploads_dir())
         .await
         .map_err(|e| {
@@ -91,6 +92,7 @@ pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
     Path(id): Path<E::Id>,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
+    debug!("updating entity {}", E::name());
     let e = parse_form::<E::Update>(form, ctx.uploads_dir())
         .await
         .map_err(|e| {
@@ -117,6 +119,7 @@ pub async fn delete_entity<E: entity::Delete<S>, S: ContextTrait>(
     ext: E::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
+    debug!("deleting entity {}", E::name());
     E::delete(&id, ext).await.map_err(Into::into)?;
     Ok(Redirect::to(&format!(
         "/{}",
