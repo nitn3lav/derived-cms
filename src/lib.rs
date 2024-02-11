@@ -1,14 +1,15 @@
-//! Generate a CMS, complete with admin interface, headless API and database interface from Rust
-//! type definitions. Works in cunjunction with [serde] and [ormlite] and uses [axum] as a web
-//! server.
+//! Generate a CMS, complete with admin interface and headless API from Rust type definitions.
+//! Works in cunjunction with [serde] and [ormlite] and uses [axum] as a web server.
 //!
 //! Example
 //!
 //! ```rust,no_run
+//! # use axum::extract::State;
 //! use chrono::{DateTime, Utc};
-//! use derived_cms::{App, Entity, Input, property::{Markdown, Text, Json}};
+//! use derived_cms::{App, Entity, EntityBase, Input, app::AppError, context::{Context, ContextTrait}, entity, property::{Markdown, Text, Json}};
 //! use ormlite::{Model, sqlite::Sqlite};
-//! use serde::{Deserialize, Serialize};
+//! use serde::{Deserialize, Serialize, Serializer};
+//! # use thiserror::Error;
 //! use ts_rs::TS;
 //! use uuid::Uuid;
 //!
@@ -17,7 +18,7 @@
 //! struct Post {
 //!     #[cms(id, skip_input)]
 //!     #[ormlite(primary_key)]
-//!     #[serde(default = "uuid::Uuid::new_v4")]
+//!     #[serde(default = "Uuid::new_v4")]
 //!     id: Uuid,
 //!     title: Text,
 //!     date: DateTime<Utc>,
@@ -25,6 +26,96 @@
 //!     #[serde(default)]
 //!     content: Json<Vec<Block>>,
 //!     draft: bool,
+//! }
+//!
+//! type Ctx = Context<ormlite::Pool<sqlx::Sqlite>>;
+//!
+//! # #[derive(Debug, Error)]
+//! # enum MyError {
+//! #     #[error(transparent)]
+//! #     Ormlite(#[from] ormlite::Error),
+//! #     #[error(transparent)]
+//! #     Sqlx(#[from] sqlx::Error),
+//! # }
+//! #
+//! # impl Serialize for MyError {
+//! #     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+//! #         match self {
+//! #             MyError::Ormlite(e) => serializer.collect_str(&format!("{e:#}")),
+//! #             MyError::Sqlx(e) => serializer.collect_str(&format!("{e:#}")),
+//! #         }
+//! #     }
+//! # }
+//! #
+//! # impl From<MyError> for AppError {
+//! #     fn from(value: MyError) -> Self {
+//! #         match value {
+//! #             MyError::Ormlite(e) => Self::new("Database error".to_string(), format!("{e:#}")),
+//! #             MyError::Sqlx(e) => Self::new("Database error".to_string(), format!("{e:#}")),
+//! #         }
+//! #     }
+//! # }
+//! #
+//! impl entity::Get<Ctx> for Post {
+//!     type RequestExt = State<Ctx>;
+//!     type Error = MyError;
+//!
+//!     async fn get(
+//!         id: &<Self as EntityBase<Ctx>>::Id,
+//!         ext: Self::RequestExt,
+//!     ) -> Result<Self, Self::Error> {
+//!         Ok(Self::fetch_one(id, ext.ext()).await?)
+//!     }
+//! }
+//!
+//! impl entity::List<Ctx> for Post {
+//!     type RequestExt = State<Ctx>;
+//!     type Error = MyError;
+//!
+//!     async fn list(ext: Self::RequestExt) -> Result<impl IntoIterator<Item = Self>, Self::Error> {
+//!         Ok(Self::select().fetch_all(ext.ext()).await?)
+//!     }
+//! }
+//!
+//! impl entity::Create<Ctx> for Post {
+//!     type RequestExt = State<Ctx>;
+//!     type Error = MyError;
+//!
+//!     async fn create(
+//!         data: <Self as EntityBase<Ctx>>::Create,
+//!         ext: Self::RequestExt,
+//!     ) -> Result<Self, Self::Error> {
+//!         Ok(Self::insert(data, ext.ext()).await?)
+//!     }
+//! }
+//!
+//! impl entity::Update<Ctx> for Post {
+//!     type RequestExt = State<Ctx>;
+//!     type Error = MyError;
+//!
+//!     async fn update(
+//!         id: &<Self as EntityBase<Ctx>>::Id,
+//!         mut data: <Self as EntityBase<Ctx>>::Update,
+//!         ext: Self::RequestExt,
+//!     ) -> Result<Self, Self::Error> {
+//!         Ok(data.update_all_fields(ext.ext()).await?)
+//!     }
+//! }
+//!
+//! impl entity::Delete<Ctx> for Post {
+//!     type RequestExt = State<Ctx>;
+//!     type Error = MyError;
+//!
+//!     async fn delete(
+//!         id: &<Self as EntityBase<Ctx>>::Id,
+//!         ext: Self::RequestExt,
+//!     ) -> Result<(), Self::Error> {
+//!         let r = sqlx::query("DELETE FROM post WHERE id = ?")
+//!             .bind(id)
+//!             .execute(ext.ext())
+//!             .await?;
+//!         Ok(())
+//!     }
 //! }
 //!
 //! #[derive(Debug, Deserialize, Serialize, Input, TS)]
@@ -40,57 +131,9 @@
 //!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://.tmp/db.sqlite")
 //!         .await
 //!         .unwrap();
-//!     let app = App::new().entity::<Post>().build("uploads", db);
+//!     let app = App::new().entity::<Post>().with_state(db).build("uploads");
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 //!     axum::serve(listener, app).await.unwrap();
-//! }
-//! ```
-//!
-//! ## Hooks
-//!
-//! You can add hooks to be run before an entity is created or updated
-//!
-//! ```rust
-//! # use std::convert::Infallible;
-//! #
-//! # use chrono::{DateTime, Utc};
-//! # use derived_cms::{App, Entity, EntityHooks, Input, context::ContextTrait, property::{Markdown, Text, Json}};
-//! # use ormlite::{Model, sqlite::Sqlite};
-//! # use serde::{Deserialize, Serialize};
-//! # use ts_rs::TS;
-//! # use uuid::Uuid;
-//! #
-//! # #[derive(Debug, Deserialize, Serialize, Model, Entity, TS)]
-//! # #[cms(hooks)]
-//! # #[ts(export)]
-//! # struct Post {
-//! #     #[cms(id, skip_input)]
-//! #     #[ormlite(primary_key)]
-//! #     #[serde(default = "uuid::Uuid::new_v4")]
-//! #     id: Uuid,
-//! #     title: Text,
-//! #     date: DateTime<Utc>,
-//! #     draft: bool,
-//! # }
-//! #
-//! impl<S: ContextTrait> EntityHooks<S> for Post {
-//!     // can be used to pass state from a custom middleware
-//!     type RequestExt = ();
-//!
-//!     async fn on_create(self, ext: Self::RequestExt) -> Result<Self, Infallible> {
-//!         // do some stuff
-//!         Ok(self)
-//!     }
-//!
-//!     async fn on_update(old: Self, new: Self, ext: Self::RequestExt) -> Result<Self, Infallible> {
-//!         // do some stuff
-//!         Ok(new)
-//!     }
-//!
-//!     async fn on_delete(self, ext: Self::RequestExt) -> Result<Self, Infallible> {
-//!         // do some stuff
-//!         Ok(self)
-//!     }
 //! }
 //! ```
 //!
@@ -121,7 +164,7 @@
 
 pub use app::App;
 pub use column::Column;
-pub use entity::{Entity, EntityHooks};
+pub use entity::{Entity, EntityBase};
 pub use input::Input;
 
 pub mod app;

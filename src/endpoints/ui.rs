@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{multipart::MultipartError, Multipart, Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect},
     Extension,
 };
 use convert_case::{Case, Casing};
@@ -12,68 +11,28 @@ use i18n_embed_fl::fl;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tracing::{debug, error, trace};
+use tracing::{error, trace};
 use uuid::Uuid;
 
-use crate::{context::ContextTrait, entity::EntityHooks, render, Entity};
-
-pub struct AppError {
-    pub title: String,
-    pub description: String,
-}
-
-impl AppError {
-    fn new(title: String, description: String) -> Self {
-        Self { title, description }
-    }
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        error!("{}: {}", self.title, self.description);
-        (
-            StatusCode::BAD_REQUEST,
-            render::error_page(&self.title, &self.description),
-        )
-            .into_response()
-    }
-}
+use crate::{app::AppError, context::ContextTrait, entity, render, Entity};
 
 pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
+    ext: <E as entity::List<S>>::RequestExt,
 ) -> Result<impl IntoResponse, AppError> {
-    let r = E::select().fetch_all(ctx.db()).await.map_err(|e| {
-        AppError::new(
-            fl!(
-                i18n,
-                "error-list-entities",
-                "title",
-                name = E::name_plural().to_case(Case::Title)
-            ),
-            fl!(i18n, "error-list-entities", "db", error = format!("{e:#}")),
-        )
-    })?;
-    Ok(render::entity_list_page(ctx, &i18n, &r))
+    let r = E::list(ext).await.map_err(Into::into)?;
+    Ok(render::entity_list_page(ctx, &i18n, r))
 }
 
 pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
+    ext: <E as entity::Get<S>>::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
-    let r = E::fetch_one(id, ctx.db()).await.map_err(|e| {
-        AppError::new(
-            fl!(
-                i18n,
-                "error-show-entity",
-                "title",
-                name = E::name_plural().to_case(Case::Title)
-            ),
-            fl!(i18n, "error-show-entity", "db", error = format!("{e:#}")),
-        )
-    })?;
-    Ok(render::entity_page(ctx, &i18n, Some(&r)))
+    let e = E::get(&id, ext).await.map_err(Into::into)?;
+    Ok(render::entity_page(ctx, &i18n, Some(&e)))
 }
 
 pub async fn get_add_entity<E: Entity<S>, S: ContextTrait>(
@@ -83,13 +42,13 @@ pub async fn get_add_entity<E: Entity<S>, S: ContextTrait>(
     render::add_entity_page::<E, S>(ctx, &i18n, None)
 }
 
-pub async fn post_add_entity<E: Entity<S>, S: ContextTrait>(
+pub async fn post_add_entity<E: entity::Create<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    ext: <E as EntityHooks<S>>::RequestExt,
+    ext: E::RequestExt,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    let e = parse_form::<E>(form, ctx.uploads_dir())
+    let e = parse_form::<E::Create>(form, ctx.uploads_dir())
         .await
         .map_err(|e| {
             AppError::new(
@@ -107,44 +66,7 @@ pub async fn post_add_entity<E: Entity<S>, S: ContextTrait>(
                 ),
             )
         })?;
-    debug!(
-        "Creating new {}: {}",
-        E::name().to_case(Case::Title),
-        serde_json::to_string(&e).unwrap()
-    );
-    let e = e
-        .on_create(ext)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-create-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                format!("{e:#}"),
-            )
-        })?
-        .insert(ctx.db())
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-create-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                fl!(i18n, "error-create-entity", "db", error = format!("{e:#}")),
-            )
-        })?;
-    debug!(
-        "Created new {}: {}",
-        E::name().to_case(Case::Title),
-        serde_json::to_string(&e).unwrap()
-    );
-
+    let e = E::create(e, ext).await.map_err(Into::into)?;
     let uri = &format!(
         "/{}/{}",
         E::name().to_case(Case::Kebab),
@@ -156,12 +78,11 @@ pub async fn post_add_entity<E: Entity<S>, S: ContextTrait>(
 pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    ext: <E as EntityHooks<S>>::RequestExt,
+    ext: <E as entity::Update<S>>::RequestExt,
     Path(id): Path<E::Id>,
     form: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    let db = ctx.db();
-    let mut new = parse_form::<E>(form, ctx.uploads_dir())
+    let e = parse_form::<E::Update>(form, ctx.uploads_dir())
         .await
         .map_err(|e| {
             AppError::new(
@@ -179,93 +100,15 @@ pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
                 ),
             )
         })?;
-    new.set_id(id.clone());
-    let old = E::fetch_one(id, db).await.map_err(|e| {
-        AppError::new(
-            fl!(
-                i18n,
-                "error-update-entity",
-                "title",
-                name = E::name().to_case(Case::Title)
-            ),
-            fl!(i18n, "error-update-entity", "db", error = format!("{e:#}")),
-        )
-    })?;
-    let e = E::on_update(old, new, ext)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-update-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                format!("{e:#}"),
-            )
-        })?
-        .update_all_fields(db)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-update-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                fl!(i18n, "error-update-entity", "db", error = format!("{e:#}")),
-            )
-        })?;
+    let e = E::update(&id, e, ext).await.map_err(Into::into)?;
     Ok(render::entity_page(ctx, &i18n, Some(&e)))
 }
 
-pub async fn delete_entity<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
-    Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
-    ext: <E as EntityHooks<S>>::RequestExt,
+pub async fn delete_entity<E: entity::Delete<S>, S: ContextTrait>(
+    ext: E::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
-    let db = ctx.db();
-    E::fetch_one(id, db)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-delete-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                fl!(i18n, "error-delete-entity", "db", error = format!("{e:#}")),
-            )
-        })?
-        .on_delete(ext)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-delete-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                format!("{e:#}"),
-            )
-        })?
-        .delete(db)
-        .await
-        .map_err(|e| {
-            AppError::new(
-                fl!(
-                    i18n,
-                    "error-delete-entity",
-                    "title",
-                    name = E::name().to_case(Case::Title)
-                ),
-                fl!(i18n, "error-delete-entity", "db", error = format!("{e:#}")),
-            )
-        })?;
+    E::delete(&id, ext).await.map_err(Into::into)?;
     Ok(Redirect::to(&format!(
         "/{}",
         E::name().to_case(Case::Kebab)

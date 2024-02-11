@@ -1,125 +1,52 @@
-use std::{convert::Infallible, error::Error, fmt::Display};
-
-use axum::{
-    extract::{Path, Query, State},
-    response::{IntoResponse, Response},
-    Json,
-};
-use sqlmo::query::Where;
+use axum::{extract::Path, response::IntoResponse, Json};
+use serde::Serialize;
 use thiserror::Error;
 
-use crate::{context::ContextTrait, entity::EntityHooks, Entity};
+use crate::{context::ContextTrait, entity};
 
-#[derive(Debug, Error)]
-pub enum ApiError<H: Error + Send> {
-    #[error("Database error: {0}")]
-    Database(#[from] ormlite::Error),
-    #[error(transparent)]
-    Hook(H),
-    #[error("{0}")]
-    Other(String),
-}
+#[derive(Error)]
+#[error(transparent)]
+pub struct ApiError<T: Serialize>(#[from] T);
 
-impl<H: Error + Send> IntoResponse for ApiError<H> {
-    fn into_response(self) -> Response {
-        format!("{self:#}").into_response()
+impl<T: Serialize> IntoResponse for ApiError<T> {
+    fn into_response(self) -> axum::response::Response {
+        Json(self.0).into_response()
     }
 }
 
-pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
-    Query(filters): Query<Vec<(String, String)>>,
-) -> Result<Json<Vec<E>>, ApiError<Infallible>> {
-    let mut q = E::select();
-    let Where::And(ref mut w) = q.query.where_ else {
-        return Err(ApiError::Other(
-            "Select: `Where` was not `And`. This should never happen".to_string(),
-        ));
-    };
-    for (k, v) in filters {
-        let col = format_sql_query::Column((&*k).into());
-        let mut or = vec![Where::Raw(format!(
-            "{} = {}",
-            col,
-            format_sql_query::QuotedData(&v)
-        ))];
-        if let Some(v) = sql_literal(&v) {
-            or.push(Where::Raw(format!("`{col}` = {v}")));
-        };
-        if let Some(v) = sql_binary(&v) {
-            or.push(Where::Raw(format!("`{col}` = {v}")));
-        }
-        w.push(Where::Or(or));
-    }
-    Ok(Json(q.fetch_all(ctx.db()).await?))
+pub async fn get_entities<E: entity::List<S>, S: ContextTrait>(
+    ext: E::RequestExt,
+) -> Result<Json<Vec<E>>, ApiError<E::Error>> {
+    Ok(Json(E::list(ext).await?.into_iter().collect()))
 }
 
-fn sql_literal(s: &str) -> Option<&str> {
-    (s.parse::<f64>().is_ok() || s.to_lowercase().parse::<bool>().is_ok()).then_some(s)
-}
-
-fn sql_binary(s: &str) -> Option<impl Display + '_> {
-    struct R<'a>(&'a str);
-    impl<'a> Display for R<'a> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "X'{}'", self.0)
-        }
-    }
-    ((s.len() & 1 == 0) && s.chars().all(|c| char::is_ascii_hexdigit(&c))).then_some(R(s))
-}
-
-pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
+pub async fn get_entity<E: entity::Get<S>, S: ContextTrait>(
+    ext: E::RequestExt,
     Path(id): Path<E::Id>,
-) -> Result<Json<E>, ApiError<Infallible>> {
-    Ok(Json(E::fetch_one(id, ctx.db()).await?))
+) -> Result<Json<E>, ApiError<E::Error>> {
+    Ok(Json(E::get(&id, ext).await?))
 }
 
 /// create a new entity
-pub async fn post_entities<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
-    ext: <E as EntityHooks<S>>::RequestExt,
-    Json(data): Json<E>,
-) -> Result<Json<E>, ApiError<impl Error + Send>> {
-    Ok(Json(
-        data.on_create(ext)
-            .await
-            .map_err(ApiError::Hook)?
-            .insert(ctx.db())
-            .await?,
-    ))
+pub async fn post_entities<E: entity::Create<S>, S: ContextTrait>(
+    ext: E::RequestExt,
+    Json(data): Json<E::Create>,
+) -> Result<Json<E>, ApiError<E::Error>> {
+    Ok(Json(E::create(data, ext).await?))
 }
 
 /// update existing entity
-pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
-    ext: <E as EntityHooks<S>>::RequestExt,
+pub async fn post_entity<E: entity::Update<S>, S: ContextTrait>(
+    ext: E::RequestExt,
     Path(id): Path<E::Id>,
-    Json(mut new): Json<E>,
-) -> Result<Json<E>, ApiError<impl Error + Send>> {
-    let db = ctx.db();
-    new.set_id(id.clone());
-    let old = E::fetch_one(id, db).await?;
-    Ok(Json(
-        E::on_update(old, new, ext)
-            .await
-            .map_err(ApiError::Hook)?
-            .update_all_fields(db)
-            .await?,
-    ))
+    Json(data): Json<E::Update>,
+) -> Result<Json<E>, ApiError<E::Error>> {
+    Ok(Json(E::update(&id, data, ext).await?))
 }
 
-pub async fn delete_entity<E: Entity<S>, S: ContextTrait>(
-    ctx: State<S>,
-    ext: <E as EntityHooks<S>>::RequestExt,
+pub async fn delete_entity<E: entity::Delete<S>, S: ContextTrait>(
+    ext: E::RequestExt,
     Path(id): Path<E::Id>,
-) -> Result<(), ApiError<impl Error + Send>> {
-    let db = ctx.db();
-    Ok(E::fetch_one(id, db)
-        .await?
-        .on_delete(ext)
-        .await
-        .map_err(ApiError::Hook)?
-        .delete(db)
-        .await?)
+) -> Result<(), ApiError<E::Error>> {
+    Ok(E::delete(&id, ext).await?)
 }

@@ -2,15 +2,15 @@ use convert_case::Case;
 use darling::{FromAttributes, FromField};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{DataStruct, DeriveInput, Field, Type};
+use syn::{DataStruct, DeriveInput, Field, Path, Type};
 
 use crate::util::{found_crate, renamed_name, RenameAll};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(cms, serde))]
 struct EntityStructOptions {
-    #[darling(default)]
-    hooks: bool,
+    create: Option<Path>,
+    update: Option<Path>,
     rename: Option<String>,
     rename_all: Option<RenameAll>,
 }
@@ -100,6 +100,17 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
         )));
     }
 
+    let create = struct_attr
+        .create
+        .as_ref()
+        .map(|v| quote!(#v))
+        .unwrap_or(quote!(Self));
+    let update = struct_attr
+        .update
+        .as_ref()
+        .map(|v| quote!(#v))
+        .unwrap_or(quote!(Self));
+
     let cols = fields
         .iter()
         .filter(|attr| !attr.skip_column)
@@ -110,25 +121,16 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let column_names = column_names_fn(&fields, &struct_attr);
     let column_values = column_values_fn(&fields);
 
-    let hooks = if !struct_attr.hooks {
-        quote! {
-            #[automatically_derived]
-            impl<S: #found_crate::context::ContextTrait> #found_crate::EntityHooks<S> for #ident {
-                type RequestExt = ();
-            }
-        }
-    } else {
-        quote!()
-    };
-
     Ok(quote! {
         #[automatically_derived]
-        impl<S: #found_crate::context::ContextTrait> #found_crate::Entity<S> for #ident
+        impl<S: #found_crate::context::ContextTrait> #found_crate::EntityBase<S> for #ident
         where
             Self: #found_crate::derive::ormlite::Model<#found_crate::DB>,
-            Self: #found_crate::EntityHooks<S>,
         {
             type Id = #id_type;
+
+            type Create = #create;
+            type Update = #update;
 
             type NumberOfColumns = #found_crate::derive::generic_array::typenum::#number_of_columns;
 
@@ -142,16 +144,23 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             fn id(&self) -> &#id_type {
                 &self.#id_ident
             }
-            fn set_id(&mut self, id: #id_type) {
-                self.#id_ident = id;
-            }
 
             #column_names
             #column_values
             #inputs
         }
 
-        #hooks
+        #[automatically_derived]
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Entity<S> for #ident
+        where
+            Self: #found_crate::derive::ormlite::Model<#found_crate::DB>,
+            Self: #found_crate::entity::Get<S>,
+            Self: #found_crate::entity::List<S>,
+            Self: #found_crate::entity::Create<S>,
+            Self: #found_crate::entity::Update<S>,
+            Self: #found_crate::entity::Delete<S>,
+        {
+        }
     })
 }
 

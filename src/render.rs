@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt::Display};
+use std::{borrow::Borrow, cmp::Ordering, fmt::Display};
 
 use axum::extract::State;
 use convert_case::{Case, Casing};
@@ -7,7 +7,7 @@ use i18n_embed_fl::fl;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 use uuid::Uuid;
 
-use crate::{context::ContextTrait, property::EnumVariant, Entity};
+use crate::{context::ContextTrait, entity::EntityBase, property::EnumVariant, Entity};
 
 #[non_exhaustive]
 pub struct FormRenderContext<'a> {
@@ -58,7 +58,7 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     let ctx = FormRenderContext { form_id };
     html! {
         form id=(form_id) class="cms-entity-form cms-add-form" method="post" enctype="multipart/form-data" {
-            @for f in Entity::inputs(value) {
+            @for f in EntityBase::inputs(value) {
                 div class="cms-prop-container" {
                     label class="cms-prop-label" {(f.name)}
                     (f.value.render_input(f.name, f.name, true, &ctx, i18n))
@@ -75,10 +75,10 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     }
 }
 
-pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
+pub fn entity_list_page<'a, E: Entity<S>, S: ContextTrait>(
     ctx: State<impl ContextTrait>,
     i18n: &FluentLanguageLoader,
-    entities: &[E],
+    entities: impl IntoIterator<Item = impl Borrow<E>>,
 ) -> Markup {
     document(html! {
         (sidebar(&i18n, ctx.names_plural(), E::name_plural()))
@@ -97,6 +97,7 @@ pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
                     th {}
                 }
                 @for e in entities {
+                    @let e = e.borrow();
                     @let name = E::name().to_case(Case::Kebab);
                     @let id = e.id().to_string();
                     @let id = urlencoding::encode(&id);

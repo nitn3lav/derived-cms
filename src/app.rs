@@ -2,9 +2,9 @@ use std::{collections::BTreeSet, path::PathBuf, sync::Arc};
 
 use axum::{
     extract::Request,
-    http::{header::CONTENT_TYPE, HeaderMap, HeaderValue},
+    http::{header::CONTENT_TYPE, HeaderMap, HeaderValue, StatusCode},
     middleware::{self, Next},
-    response::Response,
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -12,12 +12,14 @@ use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
 use include_dir::{include_dir, Dir, DirEntry};
 use rust_embed::RustEmbed;
 use tower_http::services::ServeDir;
+use tracing::error;
 use unic_langid::LanguageIdentifier;
 
 use crate::{
     context::{Context, ContextExt},
+    endpoints::entity_routes,
     entity::Entity,
-    DB,
+    render,
 };
 
 static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
@@ -65,7 +67,7 @@ where
 {
     pub fn entity<E: Entity<Context<S>> + Send + Sync>(mut self) -> Self {
         self.names_plural.insert(E::name_plural());
-        self.router = self.router.merge(E::routes());
+        self.router = self.router.merge(entity_routes::<E, Context<S>>());
         self
     }
 }
@@ -87,13 +89,12 @@ impl<S> App<S, S>
 where
     S: ContextExt<Context<S>> + 'static,
 {
-    pub fn build(self, uploads_dir: impl Into<PathBuf>, db: sqlx::Pool<DB>) -> Router {
+    pub fn build(self, uploads_dir: impl Into<PathBuf>) -> Router {
         let uploads_dir = uploads_dir.into();
         self.router
             .nest_service("/uploads", ServeDir::new(&uploads_dir))
             .with_state(Context {
                 names_plural: self.names_plural,
-                db,
                 uploads_dir,
                 ext: self.state_ext,
             })
@@ -146,4 +147,35 @@ pub fn include_static_files<S: Clone + Send + Sync + 'static>(dir: &'static Dir<
         }
     }
     app
+}
+
+pub struct AppError {
+    pub title: String,
+    pub description: String,
+}
+
+impl From<()> for AppError {
+    fn from(_value: ()) -> Self {
+        Self {
+            title: "Infallible".to_string(),
+            description: "Infallible".to_string(),
+        }
+    }
+}
+
+impl AppError {
+    pub fn new(title: String, description: String) -> Self {
+        Self { title, description }
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        error!("{}: {}", self.title, self.description);
+        (
+            StatusCode::BAD_REQUEST,
+            render::error_page(&self.title, &self.description),
+        )
+            .into_response()
+    }
 }
