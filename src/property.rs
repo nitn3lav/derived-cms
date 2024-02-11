@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use chrono::{DateTime, TimeZone};
-use derive_more::{Display, From, FromStr, Into};
+use derive_more::{Deref, DerefMut, Display, From, FromStr, Into};
 use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
 use maud::{html, Markup, PreEscaped};
@@ -27,6 +27,8 @@ pub struct EnumVariant<'a> {
     Clone,
     Debug,
     Default,
+    Deref,
+    DerefMut,
     Display,
     From,
     FromStr,
@@ -113,6 +115,8 @@ impl Input for Text {
     Clone,
     Debug,
     Default,
+    Deref,
+    DerefMut,
     Display,
     From,
     FromStr,
@@ -371,7 +375,19 @@ impl<T: Column> Column for Option<T> {
 
 #[cfg(feature = "json")]
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Deref,
+    DerefMut,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
 )]
 #[serde(transparent)]
 pub struct Json<T: ?Sized>(pub T);
