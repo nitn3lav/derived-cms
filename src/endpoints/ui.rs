@@ -11,7 +11,7 @@ use i18n_embed_fl::fl;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tracing::{error, trace};
+use tracing::error;
 use uuid::Uuid;
 
 use crate::{app::AppError, context::ContextTrait, entity, render, Entity};
@@ -175,7 +175,7 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
                 }
                 let filename_escaped = urlencoding::encode(filename);
                 if !qs.is_empty() {
-                    qs.push_str("&");
+                    qs.push('&');
                 }
                 qs.push_str(&format!("{name}[name]={filename_escaped}&{name}[id]={id}"));
                 let path = files_dir.join(id.to_string());
@@ -189,21 +189,21 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
             }
             None => {
                 if !qs.is_empty() {
-                    qs.push_str("&");
+                    qs.push('&');
                 }
                 qs.push_str(&name);
                 let bytes = field.bytes().await?;
                 let value = urlencoding::encode_binary(&bytes);
-                qs.push_str("=");
+                qs.push('=');
                 qs.push_str(&value);
             }
             _ => {}
         };
     }
-    Ok(serde_qs::Config::new(5, false)
+    serde_qs::Config::new(5, false)
         .deserialize_str(&qs)
         .map_err(|e| ParseFormError::Deserialize {
             serde: e,
             query_string: qs,
-        })?)
+        })
 }

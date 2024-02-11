@@ -9,6 +9,7 @@
 //! use derived_cms::{App, Entity, EntityBase, Input, app::AppError, context::{Context, ContextTrait}, entity, property::{Markdown, Text, Json}};
 //! use ormlite::{Model, sqlite::Sqlite};
 //! use serde::{Deserialize, Serialize, Serializer};
+//! # use serde_with::{serde_as, DisplayFromStr};
 //! # use thiserror::Error;
 //! use ts_rs::TS;
 //! use uuid::Uuid;
@@ -30,21 +31,21 @@
 //!
 //! type Ctx = Context<ormlite::Pool<sqlx::Sqlite>>;
 //!
-//! # #[derive(Debug, Error)]
+//! # #[serde_as]
+//! # #[derive(Debug, Error, Serialize)]
 //! # enum MyError {
 //! #     #[error(transparent)]
-//! #     Ormlite(#[from] ormlite::Error),
+//! #     Ormlite(
+//! #         #[from]
+//! #         #[serde_as(as = "DisplayFromStr")]
+//! #         ormlite::Error
+//! #     ),
 //! #     #[error(transparent)]
-//! #     Sqlx(#[from] sqlx::Error),
-//! # }
-//! #
-//! # impl Serialize for MyError {
-//! #     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//! #         match self {
-//! #             MyError::Ormlite(e) => serializer.collect_str(&format!("{e:#}")),
-//! #             MyError::Sqlx(e) => serializer.collect_str(&format!("{e:#}")),
-//! #         }
-//! #     }
+//! #     Sqlx(
+//! #         #[from]
+//! #         #[serde_as(as = "DisplayFromStr")]
+//! #         sqlx::Error
+//! #     ),
 //! # }
 //! #
 //! # impl From<MyError> for AppError {

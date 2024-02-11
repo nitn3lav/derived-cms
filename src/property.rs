@@ -493,7 +493,7 @@ impl<'de> Deserialize<'de> for File {
             name: Option<String>,
             name_old: Option<String>,
         }
-        let f = File::deserialize(deserializer).map_err(|e| e)?;
+        let f = File::deserialize(deserializer)?;
         let id =
             f.id.or(f.id_old)
                 .map(Into::into)
@@ -518,7 +518,7 @@ impl Input for File {
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            @if let Some(ref v) = value {
+            @if let Some(v) = value {
                 input type="hidden" name=(format!("{name}[id_old]")) value=(v.id) {}
                 input type="hidden" name=(format!("{name}[name_old]")) value=(v.name) {}
             }
@@ -559,7 +559,7 @@ impl Input for Image {
     ) -> Markup {
         html! {
             fieldset class="cms-image cms-prop-group" {
-                @if let Some(ref v) = value {
+                @if let Some(v) = value {
                     input type="hidden" name=(format!("{name}[id_old]")) value=(v.file.id) {}
                     input type="hidden" name=(format!("{name}[name_old]")) value=(v.file.name) {}
                 }

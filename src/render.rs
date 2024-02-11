@@ -75,7 +75,7 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     }
 }
 
-pub fn entity_list_page<'a, E: Entity<S>, S: ContextTrait>(
+pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
     ctx: State<impl ContextTrait>,
     i18n: &FluentLanguageLoader,
     entities: impl IntoIterator<Item = impl Borrow<E>>,
