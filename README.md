@@ -39,8 +39,12 @@ impl entity::Get<Ctx> for Post {
     async fn get(
         id: &<Self as EntityBase<Ctx>>::Id,
         ext: Self::RequestExt,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self::fetch_one(id, ext.ext()).await?)
+    ) -> Result<Option<Self>, Self::Error> {
+        match Self::fetch_one(id, ext.ext()).await {
+            Ok(v) => Ok(Some(v)),
+            Err(ormlite::Error::SqlxError(sqlx::Error::RowNotFound)) => Ok(None),
+            Err(e) => Err(e)?,
+        }
     }
 }
 

@@ -31,7 +31,16 @@ pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
     ext: <E as entity::Get<S>>::RequestExt,
     Path(id): Path<E::Id>,
 ) -> Result<impl IntoResponse, AppError> {
-    let e = E::get(&id, ext).await.map_err(Into::into)?;
+    let e = E::get(&id, ext).await.map_err(Into::into)?.ok_or_else(|| {
+        AppError::new(
+            "Not Found".to_string(),
+            format!(
+                "The {} with id {} does not exist",
+                E::name().to_case(Case::Title),
+                id
+            ),
+        )
+    })?;
     Ok(render::entity_page(ctx, &i18n, Some(&e)))
 }
 

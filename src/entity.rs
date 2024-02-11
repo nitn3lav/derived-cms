@@ -42,7 +42,7 @@ pub trait Get<S: ContextTrait>: EntityBase<S> {
     fn get(
         id: &<Self as EntityBase<S>>::Id,
         ext: Self::RequestExt,
-    ) -> impl Future<Output = Result<Self, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<Self>, Self::Error>> + Send;
 }
 
 pub trait List<S: ContextTrait>: EntityBase<S> {

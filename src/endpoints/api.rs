@@ -1,4 +1,9 @@
-use axum::{extract::Path, response::IntoResponse, Json};
+use axum::{
+    extract::Path,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -23,8 +28,11 @@ pub async fn get_entities<E: entity::List<S>, S: ContextTrait>(
 pub async fn get_entity<E: entity::Get<S>, S: ContextTrait>(
     ext: E::RequestExt,
     Path(id): Path<E::Id>,
-) -> Result<Json<E>, ApiError<E::Error>> {
-    Ok(Json(E::get(&id, ext).await?))
+) -> Result<Response, ApiError<E::Error>> {
+    Ok(match E::get(&id, ext).await? {
+        Some(v) => Json(v).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    })
 }
 
 /// create a new entity
