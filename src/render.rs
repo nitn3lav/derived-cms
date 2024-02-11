@@ -7,7 +7,9 @@ use i18n_embed_fl::fl;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 use uuid::Uuid;
 
-use crate::{context::ContextTrait, entity::EntityBase, property::EnumVariant, Entity};
+use crate::{
+    context::ContextTrait, entity::EntityBase, input::InputInfo, property::EnumVariant, Entity,
+};
 
 #[non_exhaustive]
 pub struct FormRenderContext<'a> {
@@ -58,18 +60,28 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     let ctx = FormRenderContext { form_id };
     html! {
         form id=(form_id) class="cms-entity-form cms-add-form" method="post" enctype="multipart/form-data" {
-            @for f in EntityBase::inputs(value) {
-                div class="cms-prop-container" {
-                    label class="cms-prop-label" {(f.name)}
-                    (f.value.render_input(f.name, f.name, true, &ctx, i18n))
-                }
-            }
+            (inputs(&ctx, i18n, EntityBase::inputs(value)))
             button class="cms-button" type="submit" {
                 (fl!(i18n, "entity-inputs-submit"))
             }
             script src="/js/callOnMountRecursive.js" {}
             script {
                 (PreEscaped(format!(r#"callOnMountRecursive(document.getElementById("{form_id}"));"#)))
+            }
+        }
+    }
+}
+
+pub fn inputs<'a>(
+    ctx: &FormRenderContext<'_>,
+    i18n: &FluentLanguageLoader,
+    inputs: impl IntoIterator<Item = InputInfo<'a>>,
+) -> Markup {
+    html! {
+        @for f in inputs {
+            div class="cms-prop-container" {
+                label class="cms-prop-label" {(f.name_human)}
+                (f.value.render_input(f.name, f.name_human, true, &ctx, i18n))
             }
         }
     }
@@ -185,10 +197,10 @@ pub fn add_entity_page<E: Entity<S>, S: ContextTrait>(
     })
 }
 
-pub fn input_enum<'a>(
-    ctx: &FormRenderContext<'a>,
+pub fn input_enum(
+    ctx: &FormRenderContext<'_>,
     i18n: &FluentLanguageLoader,
-    variants: &[EnumVariant<'a>],
+    variants: &[EnumVariant<'_>],
     selected: usize,
     required: bool,
 ) -> Markup {

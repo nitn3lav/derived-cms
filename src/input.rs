@@ -48,5 +48,6 @@ impl<T: Input> DynInput for Option<&T> {
 #[derive(Debug)]
 pub struct InputInfo<'a> {
     pub name: &'a str,
+    pub name_human: &'a str,
     pub value: Box<dyn DynInput + 'a>,
 }

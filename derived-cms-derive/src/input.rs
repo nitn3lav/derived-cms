@@ -1,9 +1,109 @@
-use darling::{FromDeriveInput, FromVariant};
+use darling::{FromDeriveInput, FromField, FromVariant};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{DataEnum, DataStruct, DeriveInput};
+use syn::{DataEnum, DataStruct, DeriveInput, Field};
 
 use crate::util::{found_crate, renamed_name, RenameAll};
+
+/**********
+ * struct *
+ **********/
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(cms, serde))]
+struct InputStructOptions {
+    rename_all: Option<RenameAll>,
+}
+
+#[derive(Debug, FromField)]
+#[darling(attributes(cms, serde))]
+struct InputFieldOptions {
+    ident: Option<Ident>,
+    /// Do not display this field in list columns
+    #[darling(default)]
+    skip_input: bool,
+    rename: Option<String>,
+}
+
+impl InputFieldOptions {
+    fn parse(f: &Field) -> Result<Self, darling::Error> {
+        // TODO: allow overwriting options from serde with #[cms(...)]
+        let attrs = f
+            .attrs
+            .iter()
+            // filter serde fields
+            .filter(|a| {
+                let path = a.path();
+                if !path.is_ident(&Ident::new("serde", Span::call_site())) {
+                    return true;
+                }
+                if let syn::Meta::NameValue(v) = &a.meta {
+                    return v.path.is_ident(&Ident::new("rename", Span::call_site()));
+                }
+                false
+            })
+            .cloned()
+            .collect();
+        let f = Field {
+            attrs,
+            vis: f.vis.clone(),
+            mutability: f.mutability.clone(),
+            ident: f.ident.clone(),
+            colon_token: f.colon_token,
+            ty: f.ty.clone(),
+        };
+        Self::from_field(&f)
+    }
+}
+
+pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<TokenStream> {
+    let found_crate = found_crate();
+
+    let ident = &input.ident;
+    let struct_attr = InputStructOptions::from_derive_input(input)?;
+
+    let fields = data
+        .fields
+        .iter()
+        .map(InputFieldOptions::parse)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let inputs = fields.iter().filter(|f| !f.skip_input).map(|f| {
+        let Some(ident) = &f.ident else {
+            return quote!(compile_error!(
+                "`Entity` can only be derived for `struct`s with named fields"
+            ));
+        };
+        let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+        quote! {
+            #found_crate::input::InputInfo {
+                name: &::std::format!("{}[{}]", name, #name),
+                name_human: #name,
+                value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
+            }
+        }
+    });
+
+    Ok(quote! {
+        #[automatically_derived]
+        impl #found_crate::Input for #ident {
+            fn render_input(
+                value: ::std::option::Option<&Self>,
+                name: &::std::primitive::str,
+                _name_human: &::std::primitive::str,
+                required: ::std::primitive::bool,
+                ctx: &derived_cms::render::FormRenderContext,
+                i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
+            ) -> #found_crate::derive::maud::Markup {
+                render::inputs(ctx, i18n, [#(#inputs, )*])
+            }
+        }
+    })
+}
+
+/********
+ * enum *
+ ********/
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(cms, serde))]
@@ -16,10 +116,6 @@ struct InputEnumOptions {
 #[derive(Debug, FromVariant)]
 struct InputVariantOptions {
     rename: Option<String>,
-}
-
-pub fn derive_struct(_input: &DeriveInput, _data: &DataStruct) -> syn::Result<TokenStream> {
-    todo!()
 }
 
 pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStream> {
@@ -70,6 +166,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                     quote! {
                         ::std::option::Option::Some(#found_crate::input::InputInfo {
                             name: #name_content,
+                            name_human: #content,
                             value: ::std::boxed::Box::new(#content_val),
                         })
                     }

@@ -216,27 +216,24 @@ fn column_values_fn(fields: &[EntityFieldOptions]) -> TokenStream {
 
 fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
     let found_crate = found_crate();
-    let inputs = fields
-        .iter()
-        .filter(|f| !f.skip_input)
-        .map(|f| {
-            let Some(ident) = &f.ident else {
-                return quote!(compile_error!(
-                    "`Entity` can only be derived for `struct`s with named fields"
-                ));
-            };
-            let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
-            quote! {
-                #found_crate::input::InputInfo {
-                    name: #name,
-                    value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
-                },
+    let inputs = fields.iter().filter(|f| !f.skip_input).map(|f| {
+        let Some(ident) = &f.ident else {
+            return quote!(compile_error!(
+                "`Entity` can only be derived for `struct`s with named fields"
+            ));
+        };
+        let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+        quote! {
+            #found_crate::input::InputInfo {
+                name: #name,
+                name_human: #name,
+                value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
             }
-        })
-        .collect::<TokenStream>();
+        }
+    });
     quote! {
         fn inputs<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::input::InputInfo<'a>> {
-            [#inputs]
+            [#(#inputs, )*]
         }
     }
 }
