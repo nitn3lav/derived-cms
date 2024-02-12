@@ -127,8 +127,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
     let x = data
         .variants
         .iter()
-        .enumerate()
-        .map(|(i, v)| {
+        .map(|v| {
             let variant_attr = InputVariantOptions::from_variant(v)?;
 
             let ident = &v.ident;
@@ -152,7 +151,6 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                     Some(quote! {
                         match value {
                             ::std::option::Option::Some(Self::#ident(#fields)) => {
-                                selected_idx = #i;
                                 ::std::option::Option::Some(#fields)
                             },
                             _ => ::std::option::Option::None,
@@ -183,6 +181,24 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
         })
         .collect::<syn::Result<TokenStream>>()?;
 
+    let selected_idx = data.variants.iter().enumerate().map(|(i, v)| {
+        let ident = &v.ident;
+        let fields = match &v.fields {
+            syn::Fields::Named(_) => quote!({ .. }),
+            syn::Fields::Unnamed(f) => f
+                .unnamed
+                .iter()
+                .enumerate()
+                .map(|(i, _)| {
+                    let ident = Ident::new(&format!("V{i}"), Span::call_site());
+                    quote!((#ident,))
+                })
+                .collect(),
+            syn::Fields::Unit => quote!(),
+        };
+        quote!(Self::#ident #fields => #i)
+    });
+
     Ok(quote! {
         #[automatically_derived]
         impl #found_crate::Input for #ident {
@@ -194,7 +210,12 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                 ctx: &derived_cms::render::FormRenderContext,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
-                let mut selected_idx = 0;
+                let selected_idx = match value {
+                    Some(v) => match v {
+                        #(#selected_idx,)*
+                    },
+                    None => 0,
+                };
                 #found_crate::render::input_enum(ctx, i18n, &[#x], selected_idx, required)
             }
         }
