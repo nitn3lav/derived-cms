@@ -135,7 +135,8 @@ pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
                             &E::name().to_case(Case::Title),
                             format!(r#"
 fetch("/{name}/{id}/delete", {{ method: "POST" }})
-    .then(() => {{
+    .then((r) => {{
+        if (!r.ok) return;
         document.getElementById("{row_id}").remove();
         document.getElementById("{dialog_id}").remove();
     }})
