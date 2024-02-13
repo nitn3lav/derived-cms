@@ -134,7 +134,7 @@ pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
                             dialog_id,
                             &E::name().to_case(Case::Title),
                             format!(r#"
-fetch("/{name}/{id}/delete", {{ method: "POST" }})
+fetch("/api/v1/{name}/{id}", {{ method: "DELETE" }})
     .then((r) => {{
         if (!r.ok) return;
         document.getElementById("{row_id}").remove();
