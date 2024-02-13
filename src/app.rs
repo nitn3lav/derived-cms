@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     extract::Request,
@@ -35,7 +35,7 @@ where
     S: ContextExt<Context<S>>,
 {
     router: Router<Context<S>>,
-    names_plural: BTreeSet<&'static str>,
+    names_plural: Vec<&'static str>,
     state_ext: E,
 }
 
@@ -66,7 +66,7 @@ where
     S: ContextExt<Context<S>> + 'static,
 {
     pub fn entity<E: Entity<Context<S>> + Send + Sync>(mut self) -> Self {
-        self.names_plural.insert(E::name_plural());
+        self.names_plural.push(E::name_plural());
         self.router = self.router.merge(entity_routes::<E, Context<S>>());
         self
     }

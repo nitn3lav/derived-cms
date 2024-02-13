@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use axum::extract::FromRef;
 
@@ -16,7 +13,7 @@ pub trait ContextTrait: Clone + Send + Sync + 'static {
 
 #[derive(Debug)]
 pub struct Context<T: ContextExt<Self>> {
-    pub(crate) names_plural: BTreeSet<&'static str>,
+    pub(crate) names_plural: Vec<&'static str>,
     pub(crate) uploads_dir: PathBuf,
     pub(crate) ext: T,
 }
