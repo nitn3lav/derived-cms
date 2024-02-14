@@ -72,6 +72,18 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     }
 }
 
+pub fn struct_input<'a>(
+    ctx: &FormRenderContext<'_>,
+    i18n: &FluentLanguageLoader,
+    fields: impl IntoIterator<Item = InputInfo<'a>>,
+) -> Markup {
+    html! {
+        fieldset class="cms-struct-container" {
+            (inputs(ctx, i18n, fields))
+        }
+    }
+}
+
 pub fn inputs<'a>(
     ctx: &FormRenderContext<'_>,
     i18n: &FluentLanguageLoader,

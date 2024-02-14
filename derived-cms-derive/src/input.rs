@@ -95,7 +95,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
                 ctx: &#found_crate::render::FormRenderContext,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
-                #found_crate::render::inputs(ctx, i18n, [#(#inputs, )*])
+                #found_crate::render::struct_input(ctx, i18n, [#(#inputs, )*])
             }
         }
     })
