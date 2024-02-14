@@ -1,4 +1,7 @@
-use std::fmt::Debug;
+use std::{
+    fmt::Debug,
+    path::{Path, PathBuf},
+};
 
 use chrono::{DateTime, TimeZone};
 use derive_more::{Deref, DerefMut, Display, From, FromStr, Into};
@@ -493,6 +496,10 @@ pub struct File {
 impl File {
     pub fn url(&self) -> String {
         format!("/uploads/{}/{}", self.id, self.name)
+    }
+
+    pub fn path(&self, uploads_dir: &Path) -> PathBuf {
+        uploads_dir.join(self.id.to_string()).join(&self.name)
     }
 }
 
