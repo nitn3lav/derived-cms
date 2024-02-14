@@ -28,6 +28,8 @@ struct EntityFieldOptions {
     #[darling(default)]
     skip_input: bool,
     rename: Option<String>,
+    #[darling(default)]
+    column_hidden: bool,
 }
 
 impl EntityFieldOptions {
@@ -118,7 +120,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let number_of_columns = Ident::new(&format!("U{}", cols.len()), Span::call_site());
 
     let inputs = inputs_fn(&fields, &struct_attr);
-    let column_names = column_names_fn(&fields, &struct_attr);
+    let columns = colums_fn(&fields, &struct_attr);
     let column_values = column_values_fn(&fields);
 
     Ok(quote! {
@@ -145,7 +147,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
                 &self.#id_ident
             }
 
-            #column_names
+            #columns
             #column_values
             #inputs
         }
@@ -164,29 +166,26 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     })
 }
 
-fn column_names_fn(
-    fields: &[EntityFieldOptions],
-    struct_attr: &EntityStructOptions,
-) -> TokenStream {
+fn colums_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -> TokenStream {
     let found_crate = found_crate();
-    let columns = fields
-        .iter()
-        .filter(|f| !f.skip_column)
-        .map(|f| {
-            let Some(ident) = &f.ident else {
-                return quote!(compile_error!(
-                    "`Entity` can only be derived for `struct`s with named fields"
-                ));
-            };
-            let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
-            quote! {
-                #name,
+    let columns = fields.iter().filter(|f| !f.skip_column).map(|f| {
+        let Some(ident) = &f.ident else {
+            return quote!(compile_error!(
+                "`Entity` can only be derived for `struct`s with named fields"
+            ));
+        };
+        let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+        let hidden = f.column_hidden;
+        quote! {
+            #found_crate::column::ColumnInfo {
+                name: #name,
+                hidden: #hidden
             }
-        })
-        .collect::<TokenStream>();
+        }
+    });
     quote! {
-        fn column_names() -> #found_crate::derive::generic_array::GenericArray<&'static str, Self::NumberOfColumns> {
-            #found_crate::derive::generic_array::arr![#columns]
+        fn columns() -> #found_crate::derive::generic_array::GenericArray<#found_crate::column::ColumnInfo, Self::NumberOfColumns> {
+            #found_crate::derive::generic_array::arr![#(#columns,)*]
         }
     }
 }

@@ -4,7 +4,12 @@ use axum::extract::FromRequestParts;
 use generic_array::{ArrayLength, GenericArray};
 use serde::{Deserialize, Serialize};
 
-use crate::{app::AppError, column::Column, context::ContextTrait, input::InputInfo};
+use crate::{
+    app::AppError,
+    column::{Column, ColumnInfo},
+    context::ContextTrait,
+    input::InputInfo,
+};
 
 pub use derived_cms_derive::Entity;
 
@@ -25,7 +30,7 @@ pub trait EntityBase<S: ContextTrait>:
     /// should return the value of the field used as primary key.
     fn id(&self) -> &Self::Id;
 
-    fn column_names() -> GenericArray<&'static str, Self::NumberOfColumns>;
+    fn columns() -> GenericArray<ColumnInfo, Self::NumberOfColumns>;
     fn column_values(&self) -> GenericArray<&dyn Column, Self::NumberOfColumns>;
     fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
 }

@@ -101,10 +101,23 @@ pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
                     (fl!(i18n, "enitity-list-add"))
                 }
             }
+            @for (i, c) in E::columns().iter().enumerate() {
+                @let i = i + 1;
+                @let id = format!("cms-list-column-filter-input-{i}");
+                input id=(id) class=("cms-list-column-filter-input") type="checkbox" checked[!c.hidden] {}
+                label for=(id) {
+                    (c.name)
+                }
+                style {(PreEscaped(format!(r#"
+#{id}:not(:checked) ~ .cms-entity-list .cms-list-column:nth-child({i}) {{
+    display: none;
+}}
+                "#).trim()))}
+            }
             table class="cms-entity-list" {
                 tr {
-                    @for c in E::column_names() {
-                        th {(c)}
+                    @for c in E::columns() {
+                        th class="cms-list-column" {(c.name)}
                     }
                     th {}
                 }
@@ -117,14 +130,14 @@ pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
                     @let dialog_id = Uuid::new_v4();
                     tr id=(row_id) {
                         @for c in e.column_values() {
-                            td onclick=(format!(
+                            td class="cms-list-column" onclick=(format!(
                                 "window.location = \"/{name}/{id}\"",
                             )) {
                                 (c.render(i18n))
                             }
                         }
                         td
-                            class="cms-list-delete-button"
+                            class="cms-list-column cms-list-delete-button"
                             onclick=(format!(r#"document.getElementById("{dialog_id}").showModal()"#))
                         {
                             "X"
