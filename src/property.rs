@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::{self as derived_cms};
-use crate::{input::InputInfo, render::FormRenderContext, Column, Input, DB};
+use crate::{self as derived_cms, input::InputInfo, render::FormRenderContext, Column, Input, DB};
 
 #[derive(Debug)]
 pub struct EnumVariant<'a> {
@@ -191,13 +190,13 @@ where
         <String as sqlx::Type<DB>>::type_info()
     }
 }
-impl sqlx::Encode<'static, DB> for Markdown
+impl<'r> sqlx::Encode<'r, DB> for Markdown
 where
-    for<'a> String: sqlx::Encode<'a, DB>,
+    String: sqlx::Encode<'r, DB>,
 {
     fn encode_by_ref(
         &self,
-        buf: &mut <DB as sqlx::database::HasArguments<'_>>::ArgumentBuffer,
+        buf: &mut <DB as sqlx::database::HasArguments<'r>>::ArgumentBuffer,
     ) -> sqlx::encode::IsNull {
         sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
