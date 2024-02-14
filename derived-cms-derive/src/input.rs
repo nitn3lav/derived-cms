@@ -92,10 +92,10 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &derived_cms::render::FormRenderContext,
+                ctx: &#found_crate::render::FormRenderContext,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
-                render::inputs(ctx, i18n, [#(#inputs, )*])
+                #found_crate::render::inputs(ctx, i18n, [#(#inputs, )*])
             }
         }
     })
@@ -207,7 +207,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &derived_cms::render::FormRenderContext,
+                ctx: &#found_crate::render::FormRenderContext,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 let selected_idx = match value {
