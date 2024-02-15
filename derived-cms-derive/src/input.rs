@@ -1,7 +1,7 @@
 use darling::{FromDeriveInput, FromField, FromVariant};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{DataEnum, DataStruct, DeriveInput, Field};
+use syn::{DataEnum, DataStruct, DeriveInput, Field, Type};
 
 use crate::util::{found_crate, renamed_name, RenameAll};
 
@@ -18,6 +18,7 @@ struct InputStructOptions {
 #[derive(Debug, FromField)]
 #[darling(attributes(cms, serde))]
 struct InputFieldOptions {
+    ty: Type,
     ident: Option<Ident>,
     /// Do not display this field in list columns
     #[darling(default)]
@@ -68,6 +69,12 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
         .map(InputFieldOptions::parse)
         .collect::<Result<Vec<_>, _>>()?;
 
+    let bounds = fields
+        .iter()
+        .filter(|attr| !attr.skip_input)
+        .map(|InputFieldOptions { ty, .. }| quote! (#ty: #found_crate::Input<S>,))
+        .collect::<TokenStream>();
+
     let inputs = fields.iter().filter(|f| !f.skip_input).map(|f| {
         let Some(ident) = &f.ident else {
             return quote!(compile_error!(
@@ -86,7 +93,10 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
 
     Ok(quote! {
         #[automatically_derived]
-        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident {
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident
+        where
+            #bounds
+        {
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
@@ -124,6 +134,11 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
     let ident = &input.ident;
     let attr = InputEnumOptions::from_derive_input(input)?;
 
+    let bounds = data
+        .variants
+        .iter()
+        .flat_map(|v| &v.fields)
+        .map(|Field { ty, .. }| quote! (#ty: #found_crate::Input<S>));
     let x = data
         .variants
         .iter()
@@ -201,7 +216,10 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
 
     Ok(quote! {
         #[automatically_derived]
-        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident {
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident
+        where
+            #(#bounds,)*
+        {
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
