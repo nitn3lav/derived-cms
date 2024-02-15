@@ -82,6 +82,12 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
         .map(EntityFieldOptions::parse)
         .collect::<Result<Vec<_>, _>>()?;
 
+    let bounds = fields
+        .iter()
+        .filter(|attr| !attr.skip_input)
+        .map(|EntityFieldOptions { ty, .. }| quote! (#ty: #found_crate::Input<S>,))
+        .collect::<TokenStream>();
+
     let mut id_iter = fields
         .iter()
         .filter(|attr| attr.id)
@@ -128,6 +134,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
         impl<S: #found_crate::context::ContextTrait> #found_crate::EntityBase<S> for #ident
         where
             Self: #found_crate::derive::ormlite::Model<#found_crate::DB>,
+            #bounds
         {
             type Id = #id_type;
 
@@ -161,6 +168,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             Self: #found_crate::entity::Create<S>,
             Self: #found_crate::entity::Update<S>,
             Self: #found_crate::entity::Delete<S>,
+            #bounds
         {
         }
     })
@@ -223,7 +231,7 @@ fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -
         };
         let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
         quote! {
-            #found_crate::input::InputInfo {
+            #found_crate::input::InputInfo::<'a, S> {
                 name: #name,
                 name_human: #name,
                 value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
@@ -231,7 +239,7 @@ fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -
         }
     });
     quote! {
-        fn inputs<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::input::InputInfo<'a>> {
+        fn inputs<'a>(value: ::std::option::Option<&'a Self>) -> impl ::std::iter::IntoIterator<Item = #found_crate::input::InputInfo<'a, S>> {
             [#(#inputs, )*]
         }
     }

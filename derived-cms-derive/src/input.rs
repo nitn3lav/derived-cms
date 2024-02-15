@@ -86,13 +86,13 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
 
     Ok(quote! {
         #[automatically_derived]
-        impl #found_crate::Input for #ident {
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident {
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &#found_crate::render::FormRenderContext,
+                ctx: &#found_crate::render::FormRenderContext::<'_, S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 #found_crate::render::struct_input(ctx, i18n, [#(#inputs, )*])
@@ -201,13 +201,13 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
 
     Ok(quote! {
         #[automatically_derived]
-        impl #found_crate::Input for #ident {
+        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident {
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &#found_crate::render::FormRenderContext,
+                ctx: &#found_crate::render::FormRenderContext<'_, S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 let selected_idx = match value {

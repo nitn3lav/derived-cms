@@ -1,6 +1,7 @@
 use std::{fmt::Display, future::Future};
 
 use axum::extract::FromRequestParts;
+pub use derived_cms_derive::Entity;
 use generic_array::{ArrayLength, GenericArray};
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +11,6 @@ use crate::{
     context::ContextTrait,
     input::InputInfo,
 };
-
-pub use derived_cms_derive::Entity;
 
 pub trait EntityBase<S: ContextTrait>:
     for<'de> Deserialize<'de> + Serialize + Send + Sync + Unpin + 'static
@@ -32,7 +31,7 @@ pub trait EntityBase<S: ContextTrait>:
 
     fn columns() -> GenericArray<ColumnInfo, Self::NumberOfColumns>;
     fn column_values(&self) -> GenericArray<&dyn Column, Self::NumberOfColumns>;
-    fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_>>;
+    fn inputs(value: Option<&Self>) -> impl IntoIterator<Item = InputInfo<'_, S>>;
 }
 
 pub trait Entity<S: ContextTrait>:

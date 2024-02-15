@@ -12,13 +12,16 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::{self as derived_cms, input::InputInfo, render::FormRenderContext, Column, Input, DB};
+use crate::{
+    self as derived_cms, context::ContextTrait, input::InputInfo, render::FormRenderContext,
+    Column, Input, DB,
+};
 
 #[derive(Debug)]
-pub struct EnumVariant<'a> {
+pub struct EnumVariant<'a, S: ContextTrait> {
     pub name: &'a str,
     pub value: &'a str,
-    pub content: Option<InputInfo<'a>>,
+    pub content: Option<InputInfo<'a, S>>,
 }
 
 /********
@@ -94,13 +97,13 @@ where
     }
 }
 
-impl Input for Text {
+impl<S: ContextTrait> Input<S> for Text {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         required: bool,
-        _ctx: &FormRenderContext,
+        _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
@@ -150,13 +153,13 @@ impl TS for Markdown {
     }
 }
 
-impl Input for Markdown {
+impl<S: ContextTrait> Input<S> for Markdown {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         required: bool,
-        _ctx: &FormRenderContext,
+        _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         let id = Uuid::new_v4();
@@ -209,7 +212,7 @@ where
  * DateTime *
  ************/
 
-impl<Tz: TimeZone> Input for DateTime<Tz>
+impl<Tz: TimeZone, S: ContextTrait> Input<S> for DateTime<Tz>
 where
     for<'de> DateTime<Tz>: Deserialize<'de>,
 {
@@ -218,7 +221,7 @@ where
         name: &str,
         _name_human: &str,
         required: bool,
-        ctx: &FormRenderContext,
+        ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         let input_id = Uuid::new_v4();
@@ -258,13 +261,13 @@ where
  * bool *
  ********/
 
-impl Input for bool {
+impl<S: ContextTrait> Input<S> for bool {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
         _required: bool,
-        _ctx: &FormRenderContext,
+        _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
@@ -284,13 +287,13 @@ impl Column for bool {
  * Vec<T> *
  **********/
 
-impl<T: Input> Input for Vec<T> {
+impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         required: bool,
-        ctx: &FormRenderContext,
+        ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
         let btn_id = Uuid::new_v4();
@@ -345,13 +348,13 @@ function setIndex(el, i) {{
  * Option *
  **********/
 
-impl<T: Input> Input for Option<T> {
+impl<T: Input<S>, S: ContextTrait> Input<S> for Option<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         _required: bool,
-        ctx: &FormRenderContext,
+        ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
         let value = match value {
@@ -452,13 +455,13 @@ where
 }
 
 #[cfg(feature = "json")]
-impl<T: Input> Input for Json<T> {
+impl<T: Input<S>, S: ContextTrait> Input<S> for Json<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         name_human: &str,
         required: bool,
-        ctx: &FormRenderContext,
+        ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
         T::render_input(value.map(|v| &v.0), name, name_human, required, ctx, i18n)
@@ -530,13 +533,13 @@ impl<'de> Deserialize<'de> for File {
     }
 }
 
-impl Input for File {
+impl<S: ContextTrait> Input<S> for File {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
         required: bool,
-        _ctx: &FormRenderContext,
+        _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
@@ -570,13 +573,13 @@ pub struct Image {
     pub alt_text: Option<String>,
 }
 
-impl Input for Image {
+impl<S: ContextTrait> Input<S> for Image {
     fn render_input(
         value: Option<&Self>,
         name: &str,
         _name_human: &str,
         required: bool,
-        _ctx: &FormRenderContext,
+        _ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {

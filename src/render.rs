@@ -12,9 +12,10 @@ use crate::{
 };
 
 #[non_exhaustive]
-pub struct FormRenderContext<'a> {
+pub struct FormRenderContext<'a, S: ContextTrait> {
     /// unique id of the HTML form element
     pub form_id: &'a str,
+    pub ctx: S,
 }
 
 pub fn document(body: Markup) -> Markup {
@@ -53,11 +54,12 @@ pub fn sidebar(
 }
 
 pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
+    ctx: S,
     i18n: &FluentLanguageLoader,
     value: Option<&E>,
 ) -> Markup {
     let form_id = &Uuid::new_v4().to_string();
-    let ctx = FormRenderContext { form_id };
+    let ctx = FormRenderContext { form_id, ctx };
     html! {
         form id=(form_id) class="cms-entity-form cms-add-form" method="post" enctype="multipart/form-data" {
             (inputs(&ctx, i18n, EntityBase::inputs(value)))
@@ -72,10 +74,10 @@ pub fn entity_inputs<E: Entity<S>, S: ContextTrait>(
     }
 }
 
-pub fn struct_input<'a>(
-    ctx: &FormRenderContext<'_>,
+pub fn struct_input<'a, S: ContextTrait>(
+    ctx: &FormRenderContext<'_, S>,
     i18n: &FluentLanguageLoader,
-    fields: impl IntoIterator<Item = InputInfo<'a>>,
+    fields: impl IntoIterator<Item = InputInfo<'a, S>>,
 ) -> Markup {
     html! {
         fieldset class="cms-struct-container" {
@@ -84,10 +86,10 @@ pub fn struct_input<'a>(
     }
 }
 
-pub fn inputs<'a>(
-    ctx: &FormRenderContext<'_>,
+pub fn inputs<'a, S: ContextTrait>(
+    ctx: &FormRenderContext<'_, S>,
     i18n: &FluentLanguageLoader,
-    inputs: impl IntoIterator<Item = InputInfo<'a>>,
+    inputs: impl IntoIterator<Item = InputInfo<'a, S>>,
 ) -> Markup {
     html! {
         @for f in inputs {
@@ -100,7 +102,7 @@ pub fn inputs<'a>(
 }
 
 pub fn entity_list_page<E: Entity<S>, S: ContextTrait>(
-    ctx: State<impl ContextTrait>,
+    ctx: State<S>,
     i18n: &FluentLanguageLoader,
     entities: impl IntoIterator<Item = impl Borrow<E>>,
 ) -> Markup {
@@ -196,7 +198,7 @@ pub fn confirm_delete_modal(
 }
 
 pub fn entity_page<E: Entity<S>, S: ContextTrait>(
-    ctx: State<impl ContextTrait>,
+    State(ctx): State<S>,
     i18n: &FluentLanguageLoader,
     entity: Option<&E>,
 ) -> Markup {
@@ -204,13 +206,13 @@ pub fn entity_page<E: Entity<S>, S: ContextTrait>(
         (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
             h1 {(fl!(i18n, "edit-entity-title", name = E::name().to_case(Case::Title)))}
-            (entity_inputs::<E, S>(i18n, entity))
+            (entity_inputs::<E, S>(ctx, i18n, entity))
         }
     })
 }
 
 pub fn add_entity_page<E: Entity<S>, S: ContextTrait>(
-    ctx: State<impl ContextTrait>,
+    State(ctx): State<S>,
     i18n: &FluentLanguageLoader,
     entity: Option<&E>,
 ) -> Markup {
@@ -218,15 +220,15 @@ pub fn add_entity_page<E: Entity<S>, S: ContextTrait>(
         (sidebar(i18n, ctx.names_plural(), E::name_plural()))
         main {
             h1 {(fl!(i18n, "create-entity-title", name = E::name().to_case(Case::Title)))}
-            (entity_inputs::<E, S>(i18n, entity))
+            (entity_inputs::<E, S>(ctx, i18n, entity))
         }
     })
 }
 
-pub fn input_enum(
-    ctx: &FormRenderContext<'_>,
+pub fn input_enum<S: ContextTrait>(
+    ctx: &FormRenderContext<'_, S>,
     i18n: &FluentLanguageLoader,
-    variants: &[EnumVariant<'_>],
+    variants: &[EnumVariant<'_, S>],
     selected: usize,
     required: bool,
 ) -> Markup {
