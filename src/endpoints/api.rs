@@ -16,7 +16,7 @@ pub struct ApiError<T: Serialize>(#[from] T);
 
 impl<T: Serialize> IntoResponse for ApiError<T> {
     fn into_response(self) -> axum::response::Response {
-        Json(self.0).into_response()
+        (StatusCode::BAD_REQUEST, Json(self.0)).into_response()
     }
 }
 
