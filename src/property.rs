@@ -227,8 +227,8 @@ where
         let input_id = Uuid::new_v4();
         let hidden_id = Uuid::new_v4();
         html! {
-            input type="datetime-local" id=(input_id) class="cms-datetime-input" {}
-            input type="hidden" name=(name) id=(hidden_id) value=[value.map(|v|v.to_rfc3339())] required[required] {}
+            input type="datetime-local" id=(input_id) class="cms-datetime-input" required[required] {}
+            input type="hidden" name=(name) id=(hidden_id) value=[value.map(|v|v.to_rfc3339())] {}
             script type="module" {(PreEscaped(format!(r#"
 const input = document.getElementById("{input_id}");
 const hidden = document.getElementById("{hidden_id}");
