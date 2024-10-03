@@ -9,6 +9,7 @@ use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
 use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
+use sqlx::error::BoxDynError;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -49,19 +50,26 @@ pub struct EnumVariant<'a, S: ContextTrait> {
 pub struct Text(pub String);
 
 impl TS for Text {
+    type WithoutGenerics = Text;
+
+    fn decl() -> String {
+        String::decl()
+    }
+
+    fn decl_concrete() -> String {
+        String::decl_concrete()
+    }
+
     fn name() -> String {
-        "string".to_string()
+        String::name()
     }
 
-    fn dependencies() -> Vec<ts_rs::Dependency>
-    where
-        Self: 'static,
-    {
-        Vec::new()
+    fn inline() -> String {
+        String::inline()
     }
 
-    fn transparent() -> bool {
-        true
+    fn inline_flattened() -> String {
+        String::inline_flattened()
     }
 }
 
@@ -70,7 +78,7 @@ where
     String: sqlx::Decode<'r, DB>,
 {
     fn decode(
-        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+        value: <DB as sqlx::Database>::ValueRef<'r>,
     ) -> Result<Self, sqlx::error::BoxDynError> {
         Ok(Self(<String as sqlx::Decode<DB>>::decode(value)?))
     }
@@ -91,8 +99,8 @@ where
 {
     fn encode_by_ref(
         &self,
-        buf: &mut <DB as sqlx::database::HasArguments<'r>>::ArgumentBuffer,
-    ) -> sqlx::encode::IsNull {
+        buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'r>,
+    ) -> Result<sqlx::encode::IsNull, BoxDynError> {
         sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
 }
@@ -137,19 +145,26 @@ impl<S: ContextTrait> Input<S> for Text {
 pub struct Markdown(pub String);
 
 impl TS for Markdown {
+    type WithoutGenerics = Self;
+
+    fn decl() -> String {
+        String::decl()
+    }
+
+    fn decl_concrete() -> String {
+        String::decl_concrete()
+    }
+
     fn name() -> String {
-        "string".to_string()
+        String::name()
     }
 
-    fn dependencies() -> Vec<ts_rs::Dependency>
-    where
-        Self: 'static,
-    {
-        Vec::new()
+    fn inline() -> String {
+        String::inline()
     }
 
-    fn transparent() -> bool {
-        true
+    fn inline_flattened() -> String {
+        String::inline_flattened()
     }
 }
 
@@ -183,7 +198,7 @@ where
     String: sqlx::Decode<'r, DB>,
 {
     fn decode(
-        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+        value: <DB as sqlx::Database>::ValueRef<'r>,
     ) -> Result<Self, sqlx::error::BoxDynError> {
         Ok(Self(<String as sqlx::Decode<DB>>::decode(value)?))
     }
@@ -202,8 +217,8 @@ where
 {
     fn encode_by_ref(
         &self,
-        buf: &mut <DB as sqlx::database::HasArguments<'r>>::ArgumentBuffer,
-    ) -> sqlx::encode::IsNull {
+        buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'r>,
+    ) -> Result<sqlx::encode::IsNull, BoxDynError> {
         sqlx::Encode::<'_, DB>::encode(&self.0, buf)
     }
 }
@@ -397,25 +412,27 @@ impl<T: Column> Column for Option<T> {
 #[serde(transparent)]
 pub struct Json<T: ?Sized>(pub T);
 
-#[cfg(feature = "json")]
-impl<T: TS> TS for Json<T> {
+impl<T: TS + ?Sized> TS for Json<T> {
+    type WithoutGenerics = Json<ts_rs::Dummy>;
+
+    fn decl() -> String {
+        T::decl()
+    }
+
+    fn decl_concrete() -> String {
+        T::decl_concrete()
+    }
+
     fn name() -> String {
-        "Json".to_string()
+        T::name()
     }
 
-    fn dependencies() -> Vec<ts_rs::Dependency>
-    where
-        Self: 'static,
-    {
-        Vec::new()
+    fn inline() -> String {
+        T::inline()
     }
 
-    fn transparent() -> bool {
-        true
-    }
-
-    fn name_with_type_args(args: Vec<String>) -> String {
-        args[0].clone()
+    fn inline_flattened() -> String {
+        T::inline_flattened()
     }
 }
 
@@ -425,7 +442,7 @@ where
     sqlx::types::Json<T>: sqlx::Decode<'r, DB>,
 {
     fn decode(
-        value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+        value: <DB as sqlx::Database>::ValueRef<'r>,
     ) -> Result<Self, sqlx::error::BoxDynError> {
         Ok(Self(
             <sqlx::types::Json<T> as sqlx::Decode<DB>>::decode(value)?.0,
@@ -448,8 +465,8 @@ where
 {
     fn encode_by_ref(
         &self,
-        buf: &mut <DB as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
-    ) -> sqlx_core::encode::IsNull {
+        buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
+    ) -> Result<sqlx_core::encode::IsNull, BoxDynError> {
         <sqlx::types::Json<&T> as sqlx::Encode<'q, DB>>::encode(sqlx::types::Json(&self.0), buf)
     }
 }
