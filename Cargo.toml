@@ -13,29 +13,29 @@ axum = { version = "0.7.3", features = ["multipart"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
-derive_more = "0.99.17"
+derive_more = { version = "1.0.0", features = ["deref", "deref_mut", "display", "from", "from_str", "into"] }
 derived-cms-derive = { version = "0.1.0", path = "derived-cms-derive" }
 format-sql-query = "0.4.0"
 generic-array = "1.0.0"
-i18n-embed = { version = "0.14.1", features = ["fluent-system"] }
-i18n-embed-fl = "0.7.0"
+i18n-embed = { version = "0.15", features = ["fluent-system"] }
+i18n-embed-fl = "0.9.1"
 include_dir = "0.7.3"
 maud = { version = "0.26.0", features = ["axum"] }
 mime_guess = "2.0.4"
-ormlite = { version = "0.18.0", features = ["uuid", "chrono", "json"] }
+ormlite = { version = "0.20", features = ["uuid", "chrono", "json"] }
 regex = "1.10.2"
 rust-embed = "8.2.0"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.111"
-serde_qs = { version = "0.12.0", features = ["axum"] }
-sqlmo = "0.16.3"
-sqlx = "0.7.3"
-sqlx-core = "0.7.3"
+serde_qs = { version = "0.13.0", features = ["axum"] }
+sqlmo = "0.21.0"
+sqlx = "0.8.1"
+sqlx-core = "0.8.1"
 thiserror = "1.0.56"
 tokio = { version = "1.35.1", features = ["fs"] }
-tower-http = { version = "0.5.1", features = ["fs"] }
+tower-http = { version = "0.6.1", features = ["fs"] }
 tracing = "0.1.40"
-ts-rs = { version = "7.1.0", features = ["chrono-impl", "uuid-impl"] }
+ts-rs = { version = "10.0.0", features = ["chrono-impl", "uuid-impl"] }
 unic-langid = "0.9.4"
 urlencoding = "2.1.3"
 uuid = { version = "1.6.1", features = ["v4", "serde"] }
