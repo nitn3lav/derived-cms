@@ -158,7 +158,7 @@ impl<S: ContextTrait> Input<S> for Markdown {
         value: Option<&Self>,
         name: &str,
         name_human: &str,
-        required: bool,
+        _required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
@@ -168,11 +168,11 @@ impl<S: ContextTrait> Input<S> for Markdown {
                 textarea
                     name=(name)
                     placeholder=(name_human)
-                    required[required]
                     id=(id)
                     onmount="new EasyMDE({ element: this })" {
                     (value.map(|v| v.0.as_ref()).unwrap_or(""))
                 }
+                link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" {}
                 script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
             }
         }
