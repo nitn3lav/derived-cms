@@ -27,6 +27,7 @@ struct Post {
     #[cms(skip_column)]
     #[serde(default)]
     content: Json<Vec<Block>>,
+    #[serde(default)]
     draft: bool,
 }
 
@@ -78,6 +79,7 @@ impl entity::Update<Ctx> for Post {
         mut data: <Self as EntityBase<Ctx>>::Update,
         ext: Self::RequestExt,
     ) -> Result<Self, Self::Error> {
+        data.id = *id;
         Ok(data.update_all_fields(ext.ext()).await?)
     }
 }
@@ -90,7 +92,7 @@ impl entity::Delete<Ctx> for Post {
         id: &<Self as EntityBase<Ctx>>::Id,
         ext: Self::RequestExt,
     ) -> Result<(), Self::Error> {
-        let r = sqlx::query("DELETE FROM post WHERE id = ?")
+        sqlx::query("DELETE FROM post WHERE id = ?")
             .bind(id)
             .execute(ext.ext())
             .await?;
