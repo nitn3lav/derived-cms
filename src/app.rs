@@ -1,14 +1,18 @@
+use derive_more::Debug;
 use std::{path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::Request,
+    extract::{Request, State},
     http::{header::CONTENT_TYPE, HeaderMap, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
-use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
+use i18n_embed::{
+    fluent::{fluent_language_loader, FluentLanguageLoader},
+    AssetsMultiplexor, I18nAssets,
+};
 use include_dir::{include_dir, Dir, DirEntry};
 use rust_embed::RustEmbed;
 use tower_http::services::ServeDir;
@@ -29,7 +33,7 @@ static STATIC_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 struct Localizations;
 
 /// build an [`axum::Router`] with all routes required for API and admin interface
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct App<S, E>
 where
     S: ContextExt<Context<S>>,
@@ -37,6 +41,8 @@ where
     router: Router<Context<S>>,
     names_plural: Vec<&'static str>,
     state_ext: E,
+    #[debug(skip)]
+    localizations: Vec<Box<dyn I18nAssets + Send + Sync + 'static>>,
 }
 
 impl<S> Default for App<S, ()>
@@ -48,6 +54,7 @@ where
             router: Default::default(),
             names_plural: Default::default(),
             state_ext: Default::default(),
+            localizations: Vec::new(),
         }
     }
 }
@@ -81,6 +88,32 @@ where
             router: self.router,
             names_plural: self.names_plural,
             state_ext: data,
+            localizations: self.localizations,
+        }
+    }
+}
+
+impl<S, E> App<S, E>
+where
+    S: ContextExt<Context<S>> + 'static,
+{
+    //! Include the given assets when loading the localized messages
+    //! upon a request.
+    //! They can then be accessed in any render functions called by
+    //! this library (e.g. [`Column::render`](crate::column::Column::render)
+    //! or [`Input::render_input`](crate::input::Input::render_input)).
+    //! Note: The domain in these functions will still be `"derived_cms"`,
+    //! so make sure to add the localized messages to the correct domain
+    //! file in the assets.
+    pub fn include_localizations(
+        self,
+        assets: impl I18nAssets + Send + Sync + 'static,
+    ) -> App<S, E> {
+        let mut localizations = self.localizations;
+        localizations.push(Box::new(assets));
+        App {
+            localizations,
+            ..self
         }
     }
 }
@@ -91,6 +124,11 @@ where
 {
     pub fn build(self, uploads_dir: impl Into<PathBuf>) -> Router {
         let uploads_dir = uploads_dir.into();
+
+        let mut localizations = self.localizations;
+        localizations.push(Box::new(Localizations));
+        let localizations = Arc::new(AssetsMultiplexor::new(localizations));
+
         self.router
             .nest_service("/uploads", ServeDir::new(&uploads_dir))
             .with_state(Context {
@@ -103,12 +141,16 @@ where
                 req.extensions_mut().insert(());
                 next.run(req)
             }))
-            .layer(middleware::from_fn(localize))
+            .layer(middleware::from_fn_with_state(localizations, localize))
             .merge(include_static_files(&STATIC_ASSETS))
     }
 }
 
-async fn localize(mut req: Request, next: Next) -> Response {
+async fn localize(
+    State(localizations): State<Arc<AssetsMultiplexor>>,
+    mut req: Request,
+    next: Next,
+) -> Response {
     let langs = req
         .headers()
         .get(axum::http::header::ACCEPT_LANGUAGE)
@@ -119,7 +161,7 @@ async fn localize(mut req: Request, next: Next) -> Response {
         .filter_map(|lang| lang.parse::<LanguageIdentifier>().ok())
         .collect::<Vec<_>>();
     let language_loader: FluentLanguageLoader = fluent_language_loader!();
-    i18n_embed::select(&language_loader, &Localizations, &langs).unwrap();
+    i18n_embed::select(&language_loader, &*localizations, &langs).unwrap();
     req.extensions_mut().insert(Arc::new(language_loader));
     next.run(req).await
 }
