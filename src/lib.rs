@@ -148,7 +148,7 @@
 //!
 //! A REST API is automatically generated for all `Entities`.
 //!
-//! List of generated endpoints, with [`name`](Entity::name) and [`name-plural`](Entity::name_plural)
+//! List of generated endpoints, with [`name`](EntityBase::name) and [`name-plural`](EntityBase::name_plural)
 //! converted to [kebab-case](convert_case::Case::Kebab):
 //!
 //! - `GET /api/v1/:name-plural`:

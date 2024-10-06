@@ -13,7 +13,7 @@ axum = { version = "0.7.3", features = ["multipart"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
-derive_more = { version = "1.0.0", features = ["deref", "deref_mut", "display", "from", "from_str", "into"] }
+derive_more = { version = "1.0.0", features = ["debug", "deref", "deref_mut", "display", "from", "from_str", "into"] }
 derived-cms-derive = { version = "0.1.0", path = "derived-cms-derive" }
 format-sql-query = "0.4.0"
 generic-array = "1.0.0"
