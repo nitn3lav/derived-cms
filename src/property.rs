@@ -223,6 +223,226 @@ where
     }
 }
 
+/**************
+ * signed int *
+ **************/
+
+impl<S: ContextTrait> Input<S> for i8 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for i16 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for i32 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for i64 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for i128 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+        }
+    }
+}
+impl Column for i8 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for i16 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for i32 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for i64 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for i128 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+
+/****************
+ * unsigned int *
+ ****************/
+
+impl<S: ContextTrait> Input<S> for u8 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for u16 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for u32 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for u64 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+        }
+    }
+}
+impl<S: ContextTrait> Input<S> for u128 {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+        }
+    }
+}
+impl Column for u8 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for u16 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for u32 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for u64 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+impl Column for u128 {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            (self)
+        }
+    }
+}
+
 /************
  * DateTime *
  ************/
