@@ -654,6 +654,24 @@ impl<T: TS + ?Sized> TS for Json<T> {
     fn inline_flattened() -> String {
         T::inline_flattened()
     }
+
+    fn visit_dependencies(visitor: &mut impl ts_rs::TypeVisitor)
+    where
+        Self: 'static,
+    {
+        T::visit_dependencies(visitor)
+    }
+
+    fn visit_generics(visitor: &mut impl ts_rs::TypeVisitor)
+    where
+        Self: 'static,
+    {
+        T::visit_generics(visitor)
+    }
+
+    fn output_path() -> Option<&'static Path> {
+        T::output_path()
+    }
 }
 
 #[cfg(feature = "json")]
