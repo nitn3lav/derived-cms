@@ -1,9 +1,12 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::{multipart::MultipartError, Multipart, Path, State},
+    extract::{
+        multipart::{Field, MultipartError},
+        Multipart, Path, State,
+    },
     response::{IntoResponse, Redirect},
-    Extension,
+    Extension, Json,
 };
 use convert_case::{Case, Casing};
 use i18n_embed::fluent::FluentLanguageLoader;
@@ -14,7 +17,14 @@ use tokio::io::AsyncWriteExt;
 use tracing::{debug, error};
 use uuid::Uuid;
 
-use crate::{app::AppError, context::ContextTrait, entity, render, Entity};
+use crate::{
+    app::AppError,
+    context::ContextTrait,
+    easymde::{EditorConfig, UploadError, UploadSuccess},
+    entity,
+    property::File,
+    render, Entity,
+};
 
 pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
@@ -145,11 +155,42 @@ enum ParseFormError {
     ),
     #[error("File names must not contain '/': {0}")]
     FilenameSlash(String),
+    #[error("Field must contain filename")]
+    FilenameMissing,
     #[error("Failed to deserialize: {serde:#}: {query_string}")]
     Deserialize {
         serde: serde_qs::Error,
         query_string: String,
     },
+}
+
+async fn stream_field_to_file<'a>(
+    mut field: Field<'a>,
+    output_dir: &'a std::path::Path,
+) -> Result<File, ParseFormError> {
+    let id = Uuid::new_v4();
+    let Some(filename) = field.file_name().filter(|name| !name.is_empty()) else {
+        return Err(ParseFormError::FilenameMissing);
+    };
+    if filename.contains('/') {
+        return Err(ParseFormError::FilenameSlash(filename.to_string()));
+    }
+
+    let folder_path = output_dir.join(id.to_string());
+    tokio::fs::create_dir_all(&folder_path).await?;
+
+    let file_path = folder_path.join(&filename);
+
+    // clone such that we don't keep a reference to filename for too long
+    let filename = filename.to_string();
+
+    let mut file = tokio::fs::File::create_new(file_path).await?;
+
+    while let Some(v) = field.chunk().await? {
+        file.write_all(&v).await?;
+    }
+
+    Ok(File::new_with_id(id, filename))
 }
 
 /// Parse multipart/form-data with nested fields like in [serde_qs].
@@ -169,25 +210,16 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
     let mut qs = String::new();
     while let Some(field) = form.next_field().await? {
         let name = field.name().ok_or(ParseFormError::NameMissing)?;
-        let name = urlencoding::encode(name);
+        let name = urlencoding::encode(name).to_string();
         match field.file_name() {
             Some(filename) if !filename.is_empty() => {
-                let id = Uuid::new_v4();
-                if filename.contains('/') {
-                    return Err(ParseFormError::FilenameSlash(filename.to_string()));
-                }
-                let filename_escaped = urlencoding::encode(filename);
+                let file = stream_field_to_file(field, files_dir).await?;
+                let filename_escaped = urlencoding::encode(&file.name);
+                let id = file.id;
                 if !qs.is_empty() {
                     qs.push('&');
                 }
                 qs.push_str(&format!("{name}[name]={filename_escaped}&{name}[id]={id}"));
-                let path = files_dir.join(id.to_string());
-                tokio::fs::create_dir_all(&path).await?;
-                let path = path.join(filename);
-                tokio::fs::File::create(path)
-                    .await?
-                    .write_all(&field.bytes().await?)
-                    .await?;
                 // TODO: delete newly created files on error
             }
             None => {
@@ -209,4 +241,32 @@ async fn parse_form<T: for<'de> Deserialize<'de>>(
             serde: e,
             query_string: qs,
         })
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct UploadDir(pub(crate) PathBuf);
+
+pub(crate) async fn parse_mde_upload(
+    config: Extension<EditorConfig>,
+    path: Extension<UploadDir>,
+    mut form: Multipart,
+) -> Result<Json<UploadSuccess>, UploadError> {
+    let upload_dir = path.0 .0;
+    while let Some(field) = form.next_field().await? {
+        let accepted = match field.content_type() {
+            Some(content_type) => config.allowed_file_types.contains(&content_type.into()),
+            None => false,
+        };
+        if !accepted {
+            return Err(UploadError::TypeNotAllowed);
+        }
+        return match stream_field_to_file(field, &upload_dir).await {
+            Ok(file) => Ok(Json::from(UploadSuccess::new(file.url()))),
+            Err(err) => {
+                error!("writing uploaded file failed: {err}");
+                Err(UploadError::ImportError)
+            }
+        };
+    }
+    Err(UploadError::NoFileGiven)
 }
