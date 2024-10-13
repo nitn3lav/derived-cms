@@ -1,13 +1,13 @@
 use derive_more::Debug;
-use std::{path::PathBuf, sync::Arc};
+use std::{convert::Infallible, path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::{Request, State},
+    extract::{DefaultBodyLimit, Request, State},
     http::{header::CONTENT_TYPE, HeaderMap, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::get,
-    Router,
+    routing::{get, post},
+    Extension, Router,
 };
 use i18n_embed::{
     fluent::{fluent_language_loader, FluentLanguageLoader},
@@ -21,8 +21,11 @@ use unic_langid::LanguageIdentifier;
 
 use crate::{
     context::{Context, ContextExt},
-    endpoints::entity_routes,
     easymde::EditorConfig,
+    endpoints::{
+        entity_routes,
+        ui::{parse_mde_upload, UploadDir},
+    },
     entity::Entity,
     render,
 };
@@ -143,7 +146,8 @@ where
         localizations.push(Box::new(Localizations));
         let localizations = Arc::new(AssetsMultiplexor::new(localizations));
 
-        self.router
+        let mut router = self
+            .router
             .nest_service("/uploads", ServeDir::new(&uploads_dir))
             .with_state(Context {
                 names_plural: self.names_plural,
@@ -157,7 +161,20 @@ where
                 next.run(req)
             }))
             .layer(middleware::from_fn_with_state(localizations, localize))
-            .merge(include_static_files(&STATIC_ASSETS))
+            .merge(include_static_files(&STATIC_ASSETS));
+        if let Some(editor_config) = self.editor_config.filter(|config| config.enable_uploads) {
+            router = router.route(
+                "/upload",
+                post(parse_mde_upload)
+                    .layer::<_, Infallible>(DefaultBodyLimit::max(
+                        editor_config.upload_max_size as usize,
+                    ))
+                    .layer::<_, Infallible>(Extension(editor_config))
+                    .layer(Extension(UploadDir(uploads_dir))),
+            );
+        }
+
+        router
     }
 }
 
