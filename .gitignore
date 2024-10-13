@@ -27,6 +27,9 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# helix project settings
+/.helix/
+
 
 # Added by cargo
 

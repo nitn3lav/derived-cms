@@ -614,118 +614,124 @@ impl<T: Column> Column for Option<T> {
  ********/
 
 #[cfg(feature = "json")]
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Deref,
-    DerefMut,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Default,
-    Serialize,
-    Deserialize,
-)]
-#[serde(transparent)]
-pub struct Json<T: ?Sized>(pub T);
+pub use json::Json;
 
-impl<T: TS + ?Sized> TS for Json<T> {
-    type WithoutGenerics = Json<ts_rs::Dummy>;
+#[cfg(feature = "json")]
+mod json {
+    use super::*;
 
-    fn decl() -> String {
-        T::decl()
+    #[derive(
+        Copy,
+        Clone,
+        Debug,
+        Deref,
+        DerefMut,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        Default,
+        Serialize,
+        Deserialize,
+    )]
+    #[serde(transparent)]
+    pub struct Json<T: ?Sized>(pub T);
+
+    impl<T: TS + ?Sized> TS for Json<T> {
+        type WithoutGenerics = Json<ts_rs::Dummy>;
+
+        fn decl() -> String {
+            T::decl()
+        }
+
+        fn decl_concrete() -> String {
+            T::decl_concrete()
+        }
+
+        fn name() -> String {
+            T::name()
+        }
+
+        fn inline() -> String {
+            T::inline()
+        }
+
+        fn inline_flattened() -> String {
+            T::inline_flattened()
+        }
+
+        fn visit_dependencies(visitor: &mut impl ts_rs::TypeVisitor)
+        where
+            Self: 'static,
+        {
+            T::visit_dependencies(visitor)
+        }
+
+        fn visit_generics(visitor: &mut impl ts_rs::TypeVisitor)
+        where
+            Self: 'static,
+        {
+            T::visit_generics(visitor)
+        }
+
+        fn output_path() -> Option<&'static Path> {
+            T::output_path()
+        }
     }
 
-    fn decl_concrete() -> String {
-        T::decl_concrete()
-    }
-
-    fn name() -> String {
-        T::name()
-    }
-
-    fn inline() -> String {
-        T::inline()
-    }
-
-    fn inline_flattened() -> String {
-        T::inline_flattened()
-    }
-
-    fn visit_dependencies(visitor: &mut impl ts_rs::TypeVisitor)
+    impl<'r, T> sqlx::Decode<'r, DB> for Json<T>
     where
-        Self: 'static,
+        sqlx::types::Json<T>: sqlx::Decode<'r, DB>,
     {
-        T::visit_dependencies(visitor)
+        fn decode(
+            value: <DB as sqlx::Database>::ValueRef<'r>,
+        ) -> Result<Self, sqlx::error::BoxDynError> {
+            Ok(Self(
+                <sqlx::types::Json<T> as sqlx::Decode<DB>>::decode(value)?.0,
+            ))
+        }
     }
 
-    fn visit_generics(visitor: &mut impl ts_rs::TypeVisitor)
+    impl<T> sqlx::Type<DB> for Json<T>
     where
-        Self: 'static,
+        sqlx::types::Json<T>: sqlx::Type<DB>,
     {
-        T::visit_generics(visitor)
+        fn type_info() -> <DB as sqlx::Database>::TypeInfo {
+            <sqlx::types::Json<T> as sqlx::Type<DB>>::type_info()
+        }
     }
 
-    fn output_path() -> Option<&'static Path> {
-        T::output_path()
+    impl<'q, T> sqlx::Encode<'q, DB> for Json<T>
+    where
+        for<'a> sqlx::types::Json<&'a T>: sqlx::Encode<'q, DB>,
+    {
+        fn encode_by_ref(
+            &self,
+            buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
+        ) -> Result<sqlx_core::encode::IsNull, BoxDynError> {
+            <sqlx::types::Json<&T> as sqlx::Encode<'q, DB>>::encode(sqlx::types::Json(&self.0), buf)
+        }
     }
-}
 
-#[cfg(feature = "json")]
-impl<'r, T> sqlx::Decode<'r, DB> for Json<T>
-where
-    sqlx::types::Json<T>: sqlx::Decode<'r, DB>,
-{
-    fn decode(
-        value: <DB as sqlx::Database>::ValueRef<'r>,
-    ) -> Result<Self, sqlx::error::BoxDynError> {
-        Ok(Self(
-            <sqlx::types::Json<T> as sqlx::Decode<DB>>::decode(value)?.0,
-        ))
+    #[cfg(feature = "json")]
+    impl<T: Input<S>, S: ContextTrait> Input<S> for Json<T> {
+        fn render_input(
+            value: Option<&Self>,
+            name: &str,
+            name_human: &str,
+            required: bool,
+            ctx: &FormRenderContext<'_, S>,
+            i18n: &FluentLanguageLoader,
+        ) -> Markup {
+            T::render_input(value.map(|v| &v.0), name, name_human, required, ctx, i18n)
+        }
     }
-}
-#[cfg(feature = "json")]
-impl<T> sqlx::Type<DB> for Json<T>
-where
-    sqlx::types::Json<T>: sqlx::Type<DB>,
-{
-    fn type_info() -> <DB as sqlx::Database>::TypeInfo {
-        <sqlx::types::Json<T> as sqlx::Type<DB>>::type_info()
-    }
-}
-#[cfg(feature = "json")]
-impl<'q, T> sqlx::Encode<'q, DB> for Json<T>
-where
-    for<'a> sqlx::types::Json<&'a T>: sqlx::Encode<'q, DB>,
-{
-    fn encode_by_ref(
-        &self,
-        buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
-    ) -> Result<sqlx_core::encode::IsNull, BoxDynError> {
-        <sqlx::types::Json<&T> as sqlx::Encode<'q, DB>>::encode(sqlx::types::Json(&self.0), buf)
-    }
-}
-
-#[cfg(feature = "json")]
-impl<T: Input<S>, S: ContextTrait> Input<S> for Json<T> {
-    fn render_input(
-        value: Option<&Self>,
-        name: &str,
-        name_human: &str,
-        required: bool,
-        ctx: &FormRenderContext<'_, S>,
-        i18n: &FluentLanguageLoader,
-    ) -> Markup {
-        T::render_input(value.map(|v| &v.0), name, name_human, required, ctx, i18n)
-    }
-}
-#[cfg(feature = "json")]
-impl<T: Column> Column for Json<T> {
-    fn render(&self, i18n: &FluentLanguageLoader) -> Markup {
-        self.0.render(i18n)
+    #[cfg(feature = "json")]
+    impl<T: Column> Column for Json<T> {
+        fn render(&self, i18n: &FluentLanguageLoader) -> Markup {
+            self.0.render(i18n)
+        }
     }
 }
 
