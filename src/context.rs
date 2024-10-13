@@ -2,11 +2,14 @@ use std::path::{Path, PathBuf};
 
 use axum::extract::FromRef;
 
+use crate::easymde::EditorConfig;
+
 /// Trait implemented by the context available in all endpoints using [`axum::extract::State`].
 pub trait ContextTrait: Clone + Send + Sync + 'static {
     type Ext: ContextExt<Self>;
 
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>>;
+    fn editor(&self) -> Option<&EditorConfig>;
     fn uploads_dir(&self) -> &Path;
     fn ext(&self) -> &Self::Ext;
 }
@@ -14,6 +17,7 @@ pub trait ContextTrait: Clone + Send + Sync + 'static {
 #[derive(Debug)]
 pub struct Context<T: ContextExt<Self>> {
     pub(crate) names_plural: Vec<&'static str>,
+    pub(crate) editor_config: Option<EditorConfig>,
     pub(crate) uploads_dir: PathBuf,
     pub(crate) ext: T,
 }
@@ -22,6 +26,7 @@ impl<E: ContextExt<Self>> Clone for Context<E> {
         Self {
             names_plural: self.names_plural.clone(),
             uploads_dir: self.uploads_dir.clone(),
+            editor_config: self.editor_config.clone(),
             ext: self.ext.clone(),
         }
     }
@@ -31,6 +36,9 @@ impl<E: ContextExt<Self> + 'static> ContextTrait for Context<E> {
 
     fn names_plural(&self) -> impl Iterator<Item = impl AsRef<str>> {
         self.names_plural.iter()
+    }
+    fn editor(&self) -> Option<&EditorConfig> {
+        self.editor_config.as_ref()
     }
     fn uploads_dir(&self) -> &Path {
         &self.uploads_dir

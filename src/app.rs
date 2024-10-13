@@ -22,6 +22,7 @@ use unic_langid::LanguageIdentifier;
 use crate::{
     context::{Context, ContextExt},
     endpoints::entity_routes,
+    easymde::EditorConfig,
     entity::Entity,
     render,
 };
@@ -40,6 +41,7 @@ where
 {
     router: Router<Context<S>>,
     names_plural: Vec<&'static str>,
+    editor_config: Option<EditorConfig>,
     state_ext: E,
     #[debug(skip)]
     localizations: Vec<Box<dyn I18nAssets + Send + Sync + 'static>>,
@@ -53,6 +55,7 @@ where
         Self {
             router: Default::default(),
             names_plural: Default::default(),
+            editor_config: None,
             state_ext: Default::default(),
             localizations: Vec::new(),
         }
@@ -79,6 +82,16 @@ where
     }
 }
 
+impl<S, SE> App<S, SE>
+where
+    S: ContextExt<Context<S>> + 'static,
+{
+    pub fn with_mdeditor(mut self, config: EditorConfig) -> Self {
+        self.editor_config = Some(config);
+        self
+    }
+}
+
 impl<S, E> App<S, E>
 where
     S: ContextExt<Context<S>> + 'static,
@@ -87,6 +100,7 @@ where
         App {
             router: self.router,
             names_plural: self.names_plural,
+            editor_config: self.editor_config,
             state_ext: data,
             localizations: self.localizations,
         }
@@ -133,7 +147,8 @@ where
             .nest_service("/uploads", ServeDir::new(&uploads_dir))
             .with_state(Context {
                 names_plural: self.names_plural,
-                uploads_dir,
+                editor_config: self.editor_config.clone(),
+                uploads_dir: uploads_dir.clone(),
                 ext: self.state_ext,
             })
             .layer(middleware::from_fn(|mut req: Request, next: Next| {
