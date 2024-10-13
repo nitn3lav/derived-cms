@@ -752,12 +752,18 @@ impl Column for Uuid {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 pub struct File {
     /// name of the file created in `files_dir`
-    id: Uuid,
+    pub(crate) id: Uuid,
     /// original filename
-    name: String,
+    pub(crate) name: String,
 }
 
 impl File {
+    pub fn new(file_name: String) -> Self {
+        Self::new_with_id(Uuid::new_v4(), file_name)
+    }
+    pub fn new_with_id(id: Uuid, name: String) -> Self {
+        Self { id, name }
+    }
     pub fn url(&self) -> String {
         format!("/uploads/{}/{}", self.id, self.name)
     }
