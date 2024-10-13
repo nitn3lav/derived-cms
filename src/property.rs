@@ -174,21 +174,30 @@ impl<S: ContextTrait> Input<S> for Markdown {
         name: &str,
         name_human: &str,
         _required: bool,
-        _ctx: &FormRenderContext<'_, S>,
+        ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         let id = Uuid::new_v4();
+        let editor_construction = ctx.ctx.editor().map(|config| {
+            format!(
+                "new EasyMDE({{ element: this, imageMaxSize: {max_size}, uploadImage: {upload}, imageUploadEndpoint: '/upload', imagePathAbsolute: true, imageAccept: '{file_types}' }})",
+                max_size = config.upload_max_size,
+                upload = config.enable_uploads,
+                file_types = config.allowed_file_types.join(", "))
+        });
         html! {
-            div class="cms-markdown-editor" {
+            div .cms-markdown-editor {
+                @if editor_construction.is_some() {
+                    link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" {}
+                    script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
+                }
                 textarea
+                    #(id)
                     name=(name)
                     placeholder=(name_human)
-                    id=(id)
-                    onmount="new EasyMDE({ element: this })" {
+                    onmount=(editor_construction.unwrap_or_default()) {
                     (value.map(|v| v.0.as_ref()).unwrap_or(""))
                 }
-                link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" {}
-                script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
             }
         }
     }
