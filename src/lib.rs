@@ -177,6 +177,7 @@ pub use input::Input;
 pub mod app;
 pub mod column;
 pub mod context;
+pub mod easymde;
 mod endpoints;
 pub mod entity;
 pub mod input;
