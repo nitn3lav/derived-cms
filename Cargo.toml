@@ -1,9 +1,13 @@
 workspace = { members = ["derived-cms-derive"] }
 [package]
 name = "derived-cms"
-version = "0.1.0"
+version = "0.2.0"
+authors = ["Valentin Leistner <git@valentinleistner.com>"]
+description = "Generate a CMS, complete with admin interface, headless API and database interface from Rust type definitions. Works in cunjunction with serde and ormlite and uses axum as a web server."
 edition = "2021"
 license = "MPL-2.0"
+keywords = ["framework", "cms", "web"]
+repository = "https://github.com/nitn3lav/derived-cms"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,7 +18,7 @@ cfg-if = "1.0.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 convert_case = "0.6.0"
 derive_more = { version = "1.0.0", features = ["debug", "deref", "deref_mut", "display", "from", "from_str", "into"] }
-derived-cms-derive = { version = "0.1.0", path = "derived-cms-derive" }
+derived-cms-derive = { version = "0.2.0", path = "derived-cms-derive" }
 format-sql-query = "0.4.0"
 generic-array = "1.0.0"
 i18n-embed = { version = "0.15", features = ["fluent-system"] }
@@ -44,13 +48,13 @@ uuid = { version = "1.6.1", features = ["v4", "serde"] }
 serde_with = "3.6.1"
 tokio = { version = "1.35.1", features = ["full"] }
 
+[package.metadata.docs.rs]
+features = ["sqlite", "json"]
+
 [features]
 json = ["ormlite/json"]
 sqlite = ["ormlite/sqlite"]
 postgres = ["ormlite/postgres"]
-
-[patch.crates-io]
-ormlite = { git = "https://github.com/kurtbuilds/ormlite", branch = "master" }
 
 [build-dependencies]
 walkdir = "2.4.0"

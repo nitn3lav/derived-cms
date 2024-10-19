@@ -1,7 +1,11 @@
 [package]
 name = "derived-cms-derive"
-version = "0.1.0"
+version = "0.2.0"
+authors = ["Valentin Leistner <git@valentinleistner.com>"]
+description = "Macros implementation for derived-cms"
 edition = "2021"
+keywords = ["framework", "cms", "web", "derive"]
+license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
