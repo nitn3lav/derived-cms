@@ -179,7 +179,7 @@ async fn stream_field_to_file<'a>(
     let folder_path = output_dir.join(id.to_string());
     tokio::fs::create_dir_all(&folder_path).await?;
 
-    let file_path = folder_path.join(&filename);
+    let file_path = folder_path.join(filename);
 
     // clone such that we don't keep a reference to filename for too long
     let filename = filename.to_string();

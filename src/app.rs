@@ -1,4 +1,3 @@
-use derive_more::Debug;
 use std::{convert::Infallible, path::PathBuf, sync::Arc};
 
 use axum::{
@@ -9,6 +8,7 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
+use derive_more::Debug;
 use i18n_embed::{
     fluent::{fluent_language_loader, FluentLanguageLoader},
     AssetsMultiplexor, I18nAssets,

@@ -180,10 +180,13 @@ impl<S: ContextTrait> Input<S> for Markdown {
         let id = Uuid::new_v4();
         let editor_construction = ctx.ctx.editor().map(|config| {
             format!(
-                "new EasyMDE({{ element: this, imageMaxSize: {max_size}, uploadImage: {upload}, imageUploadEndpoint: '/upload', imagePathAbsolute: true, imageAccept: '{file_types}' }})",
+                "new EasyMDE({{ element: this, imageMaxSize: {max_size}, uploadImage: {upload}, \
+                 imageUploadEndpoint: '/upload', imagePathAbsolute: true, imageAccept: \
+                 '{file_types}' }})",
                 max_size = config.upload_max_size,
                 upload = config.enable_uploads,
-                file_types = config.allowed_file_types.join(", "))
+                file_types = config.allowed_file_types.join(", ")
+            )
         });
         html! {
             div .cms-markdown-editor {
@@ -648,7 +651,7 @@ mod json {
     pub struct Json<T: ?Sized>(pub T);
 
     impl<T: TS + ?Sized> TS for Json<T> {
-        type WithoutGenerics = Json<ts_rs::Dummy>;
+        type WithoutGenerics = T::WithoutGenerics;
 
         fn decl() -> String {
             T::decl()

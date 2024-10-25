@@ -1,7 +1,7 @@
 workspace = { members = ["derived-cms-derive"] }
 [package]
 name = "derived-cms"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Valentin Leistner <git@valentinleistner.com>"]
 description = "Generate a CMS, complete with admin interface, headless API and database interface from Rust type definitions. Works in cunjunction with serde and ormlite and uses axum as a web server."
 edition = "2021"
@@ -18,7 +18,7 @@ cfg-if = "1.0.0"
 chrono = { version = "0.4.38", features = ["serde"] }
 convert_case = "0.6.0"
 derive_more = { version = "1.0.0", features = ["debug", "deref", "deref_mut", "display", "from", "from_str", "into"] }
-derived-cms-derive = { version = "0.2.0", path = "derived-cms-derive" }
+derived-cms-derive = { version = "0.3.0", path = "derived-cms-derive" }
 format-sql-query = "0.4.0"
 generic-array = "1.1.0"
 i18n-embed = { version = "0.15", features = ["fluent-system"] }
