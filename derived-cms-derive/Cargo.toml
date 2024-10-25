@@ -1,6 +1,6 @@
 [package]
 name = "derived-cms-derive"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Valentin Leistner <git@valentinleistner.com>"]
 description = "Macros implementation for derived-cms"
 edition = "2021"
@@ -11,12 +11,12 @@ license = "MPL-2.0"
 
 [dependencies]
 convert_case = "0.6.0"
-darling = "0.20.3"
+darling = "0.20.10"
 itertools = "0.13.0"
-proc-macro-crate = "3.1.0"
-proc-macro2 = "1.0.73"
-quote = "1.0.34"
-syn = { version = "2.0.44", features = ["full"] }
+proc-macro-crate = "3.2.0"
+proc-macro2 = "1.0.89"
+quote = "1.0.37"
+syn = { version = "2.0.85", features = ["full"] }
 
 [lib]
 proc-macro = true
