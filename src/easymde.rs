@@ -9,7 +9,7 @@ pub struct EditorConfig {
     /// enable drag-and-drop upload functionality in the default markdown editor
     pub(crate) enable_uploads: bool,
     /// max upload size in bytes
-    pub(crate) upload_max_size: u32,
+    pub(crate) upload_max_size: usize,
     /// Allowed file types to upload. Default: image/png, image/jpeg
     pub(crate) allowed_file_types: Vec<Cow<'static, str>>,
 }
@@ -32,7 +32,7 @@ impl EditorConfig {
     }
 
     /// Set the max size for uploads.
-    pub fn upload_max_size(mut self, max_size: u32) -> Self {
+    pub fn upload_max_size(mut self, max_size: usize) -> Self {
         self.upload_max_size = max_size;
         self
     }

@@ -166,9 +166,7 @@ where
             router = router.route(
                 "/upload",
                 post(parse_mde_upload)
-                    .layer::<_, Infallible>(DefaultBodyLimit::max(
-                        editor_config.upload_max_size as usize,
-                    ))
+                    .layer::<_, Infallible>(DefaultBodyLimit::max(editor_config.upload_max_size))
                     .layer::<_, Infallible>(Extension(editor_config))
                     .layer(Extension(UploadDir(uploads_dir))),
             );
