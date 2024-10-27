@@ -191,8 +191,8 @@ impl<S: ContextTrait> Input<S> for Markdown {
         html! {
             div .cms-markdown-editor {
                 @if editor_construction.is_some() {
-                    link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" {}
-                    script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js" {}
+                    link rel="stylesheet" href="/node_modules/easymde/dist/easymde.min.css" {}
+                    script src="/node_modules/easymde/dist/easymde.min.js" {}
                 }
                 textarea
                     #(id)
@@ -561,6 +561,7 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
+import "/node_modules/sortablejs/Sortable.min.js";
 const btn = document.getElementById("{btn_id}");
 const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
@@ -585,6 +586,14 @@ function setIndex(el, i) {{
         e.attributes.for.value = e.attributes.for.value.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
     }}
 }}
+Sortable.create(list, {{
+    onEnd: () => {{
+        for (const [i, el] of list.querySelectorAll(":scope > .cms-list-element").entries()) {{
+            console.log(i, el);
+            setIndex(el, i);
+        }}
+    }},
+}});
                 "#).trim()))}
             }
         }

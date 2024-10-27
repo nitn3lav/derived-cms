@@ -1,7 +1,7 @@
 workspace = { members = ["derived-cms-derive"] }
 [package]
 name = "derived-cms"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Valentin Leistner <git@valentinleistner.com>"]
 description = "Generate a CMS, complete with admin interface, headless API and database interface from Rust type definitions. Works in cunjunction with serde and ormlite and uses axum as a web server."
 edition = "2021"
