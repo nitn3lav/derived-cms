@@ -32,7 +32,7 @@ pub async fn get_entities<E: Entity<S>, S: ContextTrait>(
     ext: <E as entity::List<S>>::RequestExt,
 ) -> Result<impl IntoResponse, AppError> {
     let r = E::list(ext).await.map_err(Into::into)?;
-    Ok(render::entity_list_page(ctx, &i18n, r))
+    Ok(render::entity_list_page(ctx, &i18n, r).into_string())
 }
 
 pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
@@ -51,14 +51,14 @@ pub async fn get_entity<E: Entity<S>, S: ContextTrait>(
             ),
         )
     })?;
-    Ok(render::entity_page(ctx, &i18n, Some(&e)))
+    Ok(render::entity_page(ctx, &i18n, Some(&e)).into_string())
 }
 
 pub async fn get_add_entity<E: Entity<S>, S: ContextTrait>(
     ctx: State<S>,
     Extension(i18n): Extension<Arc<FluentLanguageLoader>>,
 ) -> impl IntoResponse {
-    render::add_entity_page::<E, S>(ctx, &i18n, None)
+    render::add_entity_page::<E, S>(ctx, &i18n, None).into_string()
 }
 
 pub async fn post_add_entity<E: entity::Create<S>, S: ContextTrait>(
@@ -122,7 +122,7 @@ pub async fn post_entity<E: Entity<S>, S: ContextTrait>(
             )
         })?;
     let e = E::update(&id, e, ext).await.map_err(Into::into)?;
-    Ok(render::entity_page(ctx, &i18n, Some(&e)))
+    Ok(render::entity_page(ctx, &i18n, Some(&e)).into_string())
 }
 
 pub async fn delete_entity<E: entity::Delete<S>, S: ContextTrait>(

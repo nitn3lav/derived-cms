@@ -246,7 +246,7 @@ impl IntoResponse for AppError {
         error!("{}: {}", self.title, self.description);
         (
             StatusCode::BAD_REQUEST,
-            render::error_page(&self.title, &self.description),
+            render::error_page(&self.title, &self.description).into_string(),
         )
             .into_response()
     }
