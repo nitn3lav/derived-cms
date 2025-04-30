@@ -551,13 +551,19 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
             div class="cms-list-input" id=(list_id) {
                 @if let Some(v) = value {
                     @for (i, v) in v.iter().enumerate() {
-                        fieldset class="cms-list-element" {
-                            (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
+                        div class="cms-list-element-wrapper" {
+                            fieldset class="cms-list-element" {
+                                (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
+                            }
+                            button class="cms-list-remove-button" {"X"}
                         }
                     }
                 }
-                fieldset id=(template_id) class="cms-list-element" style="display: none" onmount="return true" {
-                    (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
+                div id=(template_id) class="cms-list-element-wrapper" style="display: none" onmount="return true" {
+                    fieldset class="cms-list-element" {
+                        (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
+                    }
+                    button class="cms-list-remove-button" {"X"}
                 }
                 button id=(btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
@@ -565,16 +571,7 @@ import "/node_modules/sortablejs/Sortable.min.js";
 const btn = document.getElementById("{btn_id}");
 const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
-template.remove();
-template.removeAttribute("style");
-btn.addEventListener("click", (e) => {{
-    e.preventDefault();
-    let el = template.cloneNode(true);
-    el.removeAttribute("id");
-    setIndex(el, list.childElementCount - 2)
-    list.insertBefore(el, btn);
-    callOnMountRecursive(el);
-}});
+
 function setIndex(el, i) {{
     for (const e of el.querySelectorAll("[name]")) {{
         e.name = e.name.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
@@ -586,14 +583,31 @@ function setIndex(el, i) {{
         e.attributes.for.value = e.attributes.for.value.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
     }}
 }}
-Sortable.create(list, {{
-    onEnd: () => {{
-        for (const [i, el] of list.querySelectorAll(":scope > .cms-list-element").entries()) {{
-            console.log(i, el);
-            setIndex(el, i);
-        }}
-    }},
+const recalculateIndices = () => {{
+console.log("recalculateInd")
+    for (const [i, el] of list.querySelectorAll(":scope > .cms-list-element-wrapper").entries()) {{
+        setIndex(el, i);
+    }}
+}};
+for (const btn of list.querySelectorAll(":scope > .cms-list-element-wrapper > .cms-list-remove-button")) {{
+    btn.addEventListener("click", function() {{
+        parentNode.remove();
+    }});
+    btn.addEventListener("click", recalculateIndices);
+}}
+
+template.remove();
+template.removeAttribute("style");
+btn.addEventListener("click", (e) => {{
+    e.preventDefault();
+    let el = template.cloneNode(true);
+    el.removeAttribute("id");
+    setIndex(el, list.childElementCount - 2)
+    list.insertBefore(el, btn);
+    callOnMountRecursive(el);
 }});
+// TODO: check if this works with nested lists & onmount
+Sortable.create(list, {{ onEnd: recalculateIndices }});
                 "#).trim()))}
             }
         }
