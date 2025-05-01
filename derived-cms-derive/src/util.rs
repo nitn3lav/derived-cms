@@ -25,7 +25,7 @@ pub enum RenameAll {
     ScreamingKebab,
 }
 
-impl From<RenameAll> for Case {
+impl<'a> From<RenameAll> for Case<'a> {
     fn from(value: RenameAll) -> Self {
         match value {
             RenameAll::Lower => Case::Lower,
@@ -33,7 +33,7 @@ impl From<RenameAll> for Case {
             RenameAll::Pascal => Case::Pascal,
             RenameAll::Camel => Case::Camel,
             RenameAll::Snake => Case::Snake,
-            RenameAll::ScreamingSnake => Case::ScreamingSnake,
+            RenameAll::ScreamingSnake => Case::UpperSnake,
             RenameAll::Kebab => Case::Kebab,
             RenameAll::ScreamingKebab => Case::UpperKebab,
         }
@@ -51,10 +51,10 @@ pub fn found_crate() -> TokenStream {
     }
 }
 
-pub fn renamed_name<'a>(
+pub fn renamed_name<'a, 'b>(
     s: String,
     rename: Option<impl Into<Cow<'a, str>>>,
-    rename_all: Option<impl Into<Case>>,
+    rename_all: Option<impl Into<Case<'b>>>,
 ) -> Cow<'a, str> {
     rename.map(Into::into).unwrap_or_else(|| match rename_all {
         Some(case) => s.to_case(case.into()).into(),

@@ -1,7 +1,8 @@
 workspace = { members = ["derived-cms-derive"] }
+
 [package]
 name = "derived-cms"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Valentin Leistner <git@valentinleistner.com>"]
 description = "Generate a CMS, complete with admin interface, headless API and database interface from Rust type definitions. Works in cunjunction with serde and ormlite and uses axum as a web server."
 edition = "2021"
@@ -16,22 +17,22 @@ accept-language = "3.1.0"
 axum = { version = "0.8.4", features = ["multipart"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4.41", features = ["serde"] }
-convert_case = "0.6.0"
-derive_more = { version = "1.0.0", features = ["debug", "deref", "deref_mut", "display", "from", "from_str", "into"] }
-derived-cms-derive = { version = "0.4.0", path = "derived-cms-derive" }
+convert_case = "0.8.0"
+derive_more = { version = "2.0.1", features = ["debug", "deref", "deref_mut", "display", "from", "from_str", "into"] }
+derived-cms-derive = { version = "0.5.0", path = "derived-cms-derive" }
 format-sql-query = "0.4.0"
 generic-array = "1.2.0"
 i18n-embed = { version = "0.15", features = ["fluent-system"] }
 i18n-embed-fl = "0.9.4"
 include_dir = "0.7.4"
-maud = { version = "0.26.0" }
+maud = { version = "0.27.0", features = ["axum"] }
 mime_guess = "2.0.5"
-ormlite = { version = "0.22", features = ["uuid", "chrono", "json"] }
+ormlite = { version = "0.23.3", features = ["uuid", "chrono", "json"] }
 regex = "1.11.1"
 rust-embed = "8.7.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-serde_qs = { version = "0.13.0", features = ["axum"] }
+serde_qs = { version = "0.15.0", features = ["axum"] }
 sqlmo = "0.23.1"
 sqlx = "0.8.5"
 sqlx-core = "0.8.5"
