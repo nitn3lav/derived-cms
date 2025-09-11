@@ -1,6 +1,6 @@
 use darling::{FromDeriveInput, FromField, FromVariant};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{DataEnum, DataStruct, DeriveInput, Field, Type};
 
 use crate::util::{found_crate, renamed_name, RenameAll};
@@ -63,6 +63,13 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let ident = &input.ident;
     let struct_attr = InputStructOptions::from_derive_input(input)?;
 
+    let generics = &input.generics.params;
+    let generic_idents = input.generics.params.iter().map(|g| match g {
+        syn::GenericParam::Lifetime(p) => p.lifetime.clone().into_token_stream(),
+        syn::GenericParam::Type(p) => p.ident.clone().into_token_stream(),
+        syn::GenericParam::Const(_) => unimplemented!(),
+    });
+
     let fields = data
         .fields
         .iter()
@@ -72,7 +79,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
     let bounds = fields
         .iter()
         .filter(|attr| !attr.skip_input)
-        .map(|InputFieldOptions { ty, .. }| quote! (#ty: #found_crate::Input<S>,))
+        .map(|InputFieldOptions { ty, .. }| quote! (#ty: #found_crate::Input<__S>,))
         .collect::<TokenStream>();
 
     let inputs = fields.iter().filter(|f| !f.skip_input).map(|f| {
@@ -93,7 +100,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
 
     Ok(quote! {
         #[automatically_derived]
-        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident
+        impl<__S: #found_crate::context::ContextTrait, #generics> #found_crate::Input<__S> for #ident<#(#generic_idents),*>
         where
             #bounds
         {
@@ -102,7 +109,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &#found_crate::render::FormRenderContext::<'_, S>,
+                ctx: &#found_crate::render::FormRenderContext::<'_, __S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 #found_crate::render::struct_input(ctx, i18n, [#(#inputs, )*])
@@ -134,11 +141,18 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
     let ident = &input.ident;
     let attr = InputEnumOptions::from_derive_input(input)?;
 
+    let generics = &input.generics.params;
+    let generic_idents = input.generics.params.iter().map(|g| match g {
+        syn::GenericParam::Lifetime(p) => p.lifetime.clone().into_token_stream(),
+        syn::GenericParam::Type(p) => p.ident.clone().into_token_stream(),
+        syn::GenericParam::Const(_) => unimplemented!(),
+    });
+
     let bounds = data
         .variants
         .iter()
         .flat_map(|v| &v.fields)
-        .map(|Field { ty, .. }| quote! (#ty: #found_crate::Input<S>));
+        .map(|Field { ty, .. }| quote! (#ty: #found_crate::Input<__S>));
     let x = data
         .variants
         .iter()
@@ -216,7 +230,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
 
     Ok(quote! {
         #[automatically_derived]
-        impl<S: #found_crate::context::ContextTrait> #found_crate::Input<S> for #ident
+        impl<__S: #found_crate::context::ContextTrait, #generics> #found_crate::Input<__S> for #ident<#(#generic_idents),*>
         where
             #(#bounds,)*
         {
@@ -225,7 +239,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                 name: &::std::primitive::str,
                 _name_human: &::std::primitive::str,
                 required: ::std::primitive::bool,
-                ctx: &#found_crate::render::FormRenderContext<'_, S>,
+                ctx: &#found_crate::render::FormRenderContext<'_, __S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
             ) -> #found_crate::derive::maud::Markup {
                 let selected_idx = match value {
