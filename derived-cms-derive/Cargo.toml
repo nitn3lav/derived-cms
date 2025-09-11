@@ -1,6 +1,6 @@
 [package]
 name = "derived-cms-derive"
-version = "0.5.0"
+version = "0.5.3"
 authors = ["Valentin Leistner <git@valentinleistner.com>"]
 description = "Macros implementation for derived-cms"
 edition = "2021"
