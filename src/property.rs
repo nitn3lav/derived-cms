@@ -586,16 +586,16 @@ const re = new RegExp(`^${{RegExp.escape(name)}}\[[0-9]*\]`)
 
 const setIndex = (el, i) => {{
     for (const e of el.querySelectorAll("[data-name]")) {{
-        e.setAttribute("data-name", e.getAttribute("data-name").replace(re, "name["+i+"]"));
+        e.setAttribute("data-name", e.getAttribute("data-name").replace(re, `${{name}}[${{i}}]`));
     }}
     for (const e of el.querySelectorAll("[name]")) {{
-        e.name = e.name.replace(re, "name["+i+"]");
+        e.name = e.name.replace(re, `${{name}}[${{i}}]`);
     }}
     for (const e of el.querySelectorAll("[id]")) {{
-        e.id = e.id.replace(re, "name["+i+"]");
+        e.id = e.id.replace(re, `${{name}}[${{i}}]`);
     }}
     for (const e of el.querySelectorAll("[for]")) {{
-        e.attributes.for.value = e.attributes.for.value.replace(re, "name["+i+"]");
+        e.attributes.for.value = e.attributes.for.value.replace(re, `${{name}}[${{i}}]`);
     }}
 }}
 const recalculateIndices = () => {{
