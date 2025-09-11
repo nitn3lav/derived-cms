@@ -574,41 +574,28 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
         let add_btn_id = Uuid::new_v4();
         let list_id = Uuid::new_v4();
         let template_id = Uuid::new_v4();
-        let name_regex = regex::escape(name);
-        html! {
-            div class="cms-list-input" id=(list_id) {
-                @if let Some(v) = value {
-                    @for (i, v) in v.iter().enumerate() {
-                        div class="cms-list-element-wrapper" {
-                            fieldset class="cms-list-element" {
-                                (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
-                            }
-                            button class="cms-list-remove-button" {"X"}
-                        }
-                    }
-                }
-                div id=(template_id) class="cms-list-element-wrapper" style="display: none" onmount="return true" {
-                    fieldset class="cms-list-element" {
-                        (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
-                    }
-                    button class="cms-list-remove-button" {"X"}
-                }
-                button id=(add_btn_id) {"+"}
-                script type="module" {(PreEscaped(format!(r#"
-import "/node_modules/sortablejs/Sortable.min.js";
-const btn = document.getElementById("{add_btn_id}");
+        let onmount = format!(
+            r#"
+const Sortable = (await import("/node_modules/sortablejs/modular/sortable.esm.js")).default;
+
+const addBtn = document.getElementById("{add_btn_id}");
 const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
+const name = list.getAttribute("data-name");
+const re = new RegExp(`^${{RegExp.escape(name)}}\[[0-9]*\]`)
 
-function setIndex(el, i) {{
+const setIndex = (el, i) => {{
+    for (const e of el.querySelectorAll("[data-name]")) {{
+        e.setAttribute("data-name", e.getAttribute("data-name").replace(re, "name["+i+"]"));
+    }}
     for (const e of el.querySelectorAll("[name]")) {{
-        e.name = e.name.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
+        e.name = e.name.replace(re, "name["+i+"]");
     }}
     for (const e of el.querySelectorAll("[id]")) {{
-        e.id = e.id.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
+        e.id = e.id.replace(re, "name["+i+"]");
     }}
     for (const e of el.querySelectorAll("[for]")) {{
-        e.attributes.for.value = e.attributes.for.value.replace(/^{name_regex}\[[0-9]*\]/, "{name}["+i+"]")
+        e.attributes.for.value = e.attributes.for.value.replace(re, "name["+i+"]");
     }}
 }}
 const recalculateIndices = () => {{
@@ -627,17 +614,40 @@ for (const btn of list.querySelectorAll(":scope > .cms-list-element-wrapper > .c
 
 template.remove();
 template.removeAttribute("style");
-btn.addEventListener("click", (e) => {{
+addBtn.addEventListener("click", (e) => {{
     e.preventDefault();
     let el = template.cloneNode(true);
     el.removeAttribute("id");
-    setIndex(el, list.childElementCount - 2)
-    list.insertBefore(el, btn);
+    setIndex(el, list.childElementCount - 1)
+    list.insertBefore(el, addBtn);
     callOnMountRecursive(el);
 }});
 // TODO: check if this works with nested lists & onmount
 Sortable.create(list, {{ onEnd: recalculateIndices }});
-                "#).trim()))}
+"#
+        );
+        html! {
+            div class="cms-list-input" id=(list_id) data-name=(name) onmount=(onmount) {
+                // content
+                @if let Some(v) = value {
+                    @for (i, v) in v.iter().enumerate() {
+                        div class="cms-list-element-wrapper" {
+                            fieldset class="cms-list-element" {
+                                (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
+                            }
+                            button class="cms-list-remove-button" {"X"}
+                        }
+                    }
+                }
+                // template
+                div id=(template_id) class="cms-list-element-wrapper" style="display: none" onmount="return true" {
+                    fieldset class="cms-list-element" {
+                        (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
+                    }
+                    button class="cms-list-remove-button" {"X"}
+                }
+                // add button
+                button id=(add_btn_id) {"+"}
             }
         }
     }
