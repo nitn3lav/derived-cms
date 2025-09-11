@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use chrono::{DateTime, TimeZone};
+use chrono::{DateTime, NaiveDate, TimeZone};
 use derive_more::{Deref, DerefMut, Display, From, FromStr, Into};
 use i18n_embed::fluent::FluentLanguageLoader;
 use i18n_embed_fl::fl;
@@ -499,6 +499,34 @@ where
         html! {
             time datetime=(self.to_rfc3339()) {
                 (self.to_string())
+            }
+        }
+    }
+}
+
+/*************
+ * NaiveDate *
+ *************/
+
+impl<S: ContextTrait> Input<S> for NaiveDate {
+    fn render_input(
+        value: Option<&Self>,
+        name: &str,
+        _name_human: &str,
+        required: bool,
+        _ctx: &FormRenderContext<'_, S>,
+        _i18n: &FluentLanguageLoader,
+    ) -> Markup {
+        html! {
+            input type="date" name=(name) value=[value] class="cms-date-input" required[required] {}
+        }
+    }
+}
+impl Column for NaiveDate {
+    fn render(&self, _i18n: &FluentLanguageLoader) -> Markup {
+        html! {
+            time datetime=(self) {
+                (self)
             }
         }
     }
