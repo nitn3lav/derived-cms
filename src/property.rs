@@ -543,7 +543,7 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
-        let btn_id = Uuid::new_v4();
+        let add_btn_id = Uuid::new_v4();
         let list_id = Uuid::new_v4();
         let template_id = Uuid::new_v4();
         let name_regex = regex::escape(name);
@@ -565,10 +565,10 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
                     }
                     button class="cms-list-remove-button" {"X"}
                 }
-                button id=(btn_id) {"+"}
+                button id=(add_btn_id) {"+"}
                 script type="module" {(PreEscaped(format!(r#"
 import "/node_modules/sortablejs/Sortable.min.js";
-const btn = document.getElementById("{btn_id}");
+const btn = document.getElementById("{add_btn_id}");
 const list = document.getElementById("{list_id}");
 const template = document.getElementById("{template_id}");
 
@@ -584,16 +584,17 @@ function setIndex(el, i) {{
     }}
 }}
 const recalculateIndices = () => {{
-console.log("recalculateInd")
+    console.log("recalculateInd");
     for (const [i, el] of list.querySelectorAll(":scope > .cms-list-element-wrapper").entries()) {{
         setIndex(el, i);
     }}
 }};
 for (const btn of list.querySelectorAll(":scope > .cms-list-element-wrapper > .cms-list-remove-button")) {{
-    btn.addEventListener("click", function() {{
-        parentNode.remove();
+    btn.addEventListener("click", function(e) {{
+        e.preventDefault();
+        this.parentNode.remove();
+        recalculateIndices();
     }});
-    btn.addEventListener("click", recalculateIndices);
 }}
 
 template.remove();
