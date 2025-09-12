@@ -20,7 +20,11 @@ use crate::{
 
 #[derive(Debug)]
 pub struct EnumVariant<'a, S: ContextTrait> {
+    /// Used in the HTML form's `name` field
     pub name: &'a str,
+    /// The title shown in the UI
+    pub title: &'a str,
+    /// the value denoting this enum variant / `type`
     pub value: &'a str,
     pub content: Option<InputInfo<'a, S>>,
 }
@@ -109,13 +113,13 @@ impl<S: ContextTrait> Input<S> for Text {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="text" name=(name) placeholder=(name_human) class="cms-text-input" value=[value] required[required] {}
+            input type="text" name=(name) placeholder=(title) class="cms-text-input" value=[value] required[required] {}
         }
     }
 }
@@ -172,7 +176,7 @@ impl<S: ContextTrait> Input<S> for Markdown {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         _required: bool,
         ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
@@ -197,7 +201,7 @@ impl<S: ContextTrait> Input<S> for Markdown {
                 textarea
                     #(id)
                     name=(name)
-                    placeholder=(name_human)
+                    placeholder=(title)
                     onmount=(editor_construction.unwrap_or_default()) {
                     (value.map(|v| v.0.as_ref()).unwrap_or(""))
                 }
@@ -243,13 +247,13 @@ impl<S: ContextTrait> Input<S> for i8 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+            input type="number" name=(name) placeholder=(title) class="cms-int-input" value=[value] required[required] step="1" {}
         }
     }
 }
@@ -257,13 +261,13 @@ impl<S: ContextTrait> Input<S> for i16 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+            input type="number" name=(name) placeholder=(title) class="cms-int-input" value=[value] required[required] step="1" {}
         }
     }
 }
@@ -271,13 +275,13 @@ impl<S: ContextTrait> Input<S> for i32 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+            input type="number" name=(name) placeholder=(title) class="cms-int-input" value=[value] required[required] step="1" {}
         }
     }
 }
@@ -285,13 +289,13 @@ impl<S: ContextTrait> Input<S> for i64 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+            input type="number" name=(name) placeholder=(title) class="cms-int-input" value=[value] required[required] step="1" {}
         }
     }
 }
@@ -299,13 +303,13 @@ impl<S: ContextTrait> Input<S> for i128 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-int-input" value=[value] required[required] step="1" {}
+            input type="number" name=(name) placeholder=(title) class="cms-int-input" value=[value] required[required] step="1" {}
         }
     }
 }
@@ -353,13 +357,13 @@ impl<S: ContextTrait> Input<S> for u8 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+            input type="number" name=(name) placeholder=(title) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
         }
     }
 }
@@ -367,13 +371,13 @@ impl<S: ContextTrait> Input<S> for u16 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+            input type="number" name=(name) placeholder=(title) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
         }
     }
 }
@@ -381,13 +385,13 @@ impl<S: ContextTrait> Input<S> for u32 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+            input type="number" name=(name) placeholder=(title) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
         }
     }
 }
@@ -395,13 +399,13 @@ impl<S: ContextTrait> Input<S> for u64 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+            input type="number" name=(name) placeholder=(title) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
         }
     }
 }
@@ -409,13 +413,13 @@ impl<S: ContextTrait> Input<S> for u128 {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
     ) -> Markup {
         html! {
-            input type="number" name=(name) placeholder=(name_human) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
+            input type="number" name=(name) placeholder=(title) class="cms-uint-input" value=[value] required[required] step="1" min="0" {}
         }
     }
 }
@@ -466,7 +470,7 @@ where
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        _name_human: &str,
+        _title: &str,
         required: bool,
         ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
@@ -512,7 +516,7 @@ impl<S: ContextTrait> Input<S> for NaiveDate {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        _name_human: &str,
+        _title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
@@ -540,7 +544,7 @@ impl<S: ContextTrait> Input<S> for bool {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        _name_human: &str,
+        _title: &str,
         _required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
@@ -566,7 +570,7 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Vec<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
@@ -633,7 +637,7 @@ Sortable.create(list, {{ onEnd: recalculateIndices }});
                     @for (i, v) in v.iter().enumerate() {
                         div class="cms-list-element-wrapper" {
                             fieldset class="cms-list-element" {
-                                (Input::render_input(Some(v), &format!("{name}[{i}]"), name_human, required, ctx, i18n))
+                                (Input::render_input(Some(v), &format!("{name}[{i}]"), title, required, ctx, i18n))
                             }
                             button class="cms-list-remove-button" {"X"}
                         }
@@ -642,7 +646,7 @@ Sortable.create(list, {{ onEnd: recalculateIndices }});
                 // template
                 div id=(template_id) class="cms-list-element-wrapper" style="display: none" onmount="return true" {
                     fieldset class="cms-list-element" {
-                        (Input::render_input(Option::<&T>::None, &format!("{name}[]"), name_human, required, ctx, i18n))
+                        (Input::render_input(Option::<&T>::None, &format!("{name}[]"), title, required, ctx, i18n))
                     }
                     button class="cms-list-remove-button" {"X"}
                 }
@@ -661,7 +665,7 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Option<T> {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         _required: bool,
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
@@ -670,7 +674,7 @@ impl<T: Input<S>, S: ContextTrait> Input<S> for Option<T> {
             Some(v) => v.as_ref(),
             None => None,
         };
-        T::render_input(value, name, name_human, false, ctx, i18n)
+        T::render_input(value, name, title, false, ctx, i18n)
     }
 }
 
@@ -793,12 +797,12 @@ mod json {
         fn render_input(
             value: Option<&Self>,
             name: &str,
-            name_human: &str,
+            title: &str,
             required: bool,
             ctx: &FormRenderContext<'_, S>,
             i18n: &FluentLanguageLoader,
         ) -> Markup {
-            T::render_input(value.map(|v| &v.0), name, name_human, required, ctx, i18n)
+            T::render_input(value.map(|v| &v.0), name, title, required, ctx, i18n)
         }
     }
     #[cfg(feature = "json")]
@@ -878,7 +882,7 @@ impl<S: ContextTrait> Input<S> for File {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        _name_human: &str,
+        _title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         _i18n: &FluentLanguageLoader,
@@ -918,7 +922,7 @@ impl<S: ContextTrait> Input<S> for Image {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        _name_human: &str,
+        _title: &str,
         required: bool,
         _ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,

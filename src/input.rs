@@ -11,7 +11,7 @@ pub trait Input<S: ContextTrait>: Debug {
     fn render_input(
         value: Option<&Self>,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
@@ -23,7 +23,7 @@ pub trait DynInput<S: ContextTrait>: Debug {
     fn render_input(
         &self,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
@@ -34,19 +34,21 @@ impl<T: Input<S>, S: ContextTrait> DynInput<S> for Option<&T> {
     fn render_input(
         &self,
         name: &str,
-        name_human: &str,
+        title: &str,
         required: bool,
         ctx: &FormRenderContext<'_, S>,
         i18n: &FluentLanguageLoader,
     ) -> Markup {
-        Input::render_input(self.as_deref(), name, name_human, required, ctx, i18n)
+        Input::render_input(self.as_deref(), name, title, required, ctx, i18n)
     }
 }
 
 /// a dynamic reference to an [`Input`] and it's name
 #[derive(Debug)]
 pub struct InputInfo<'a, S: ContextTrait> {
+    /// Used for the `name` field of the HTML form
     pub name: &'a str,
-    pub name_human: &'a str,
+    /// the title shown in the UI
+    pub title: &'a str,
     pub value: Box<dyn DynInput<S> + 'a>,
 }

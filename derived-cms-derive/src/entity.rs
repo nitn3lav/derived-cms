@@ -1,4 +1,4 @@
-use convert_case::Case;
+use convert_case::{Case, Casing};
 use darling::{FromAttributes, FromField};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -28,6 +28,7 @@ struct EntityFieldOptions {
     #[darling(default)]
     skip_input: bool,
     rename: Option<String>,
+    title: Option<String>,
     #[darling(default)]
     column_hidden: bool,
 }
@@ -230,10 +231,11 @@ fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -
             ));
         };
         let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+        let title = f.title.clone().unwrap_or(name.to_case(Case::Title));
         quote! {
             #found_crate::input::InputInfo::<'a, S> {
                 name: #name,
-                name_human: #name,
+                title: #title,
                 value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
             }
         }

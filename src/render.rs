@@ -94,8 +94,8 @@ pub fn inputs<'a, S: ContextTrait>(
     html! {
         @for f in inputs {
             div class="cms-prop-container" {
-                label class="cms-prop-label" {(f.name_human)}
-                (f.value.render_input(f.name, f.name_human, true, &ctx, i18n))
+                label class="cms-prop-label" {(f.title)}
+                (f.value.render_input(f.name, f.title, true, &ctx, i18n))
             }
         }
     }
@@ -245,7 +245,7 @@ pub fn input_enum<S: ContextTrait>(
                     id=(id)
                     checked[i == selected]
                     onchange="cmsEnumInputOnchange(this)" {}
-                label for=(id) {(variant.value.to_case(Case::Title))}
+                label for=(id) {(variant.title)}
             }
         }
         div class="cms-enum-data" id=(id_data) {

@@ -1,3 +1,4 @@
+use convert_case::{Case, Casing};
 use darling::{FromDeriveInput, FromField, FromVariant};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -20,10 +21,12 @@ struct InputStructOptions {
 struct InputFieldOptions {
     ty: Type,
     ident: Option<Ident>,
-    /// Do not display this field in list columns
+    /// Do not render UI for this field
     #[darling(default)]
     skip_input: bool,
     rename: Option<String>,
+    /// The title shown in the UI
+    title: Option<String>,
 }
 
 impl InputFieldOptions {
@@ -89,10 +92,11 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             ));
         };
         let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
+        let title = f.title.clone().unwrap_or(name.to_case(Case::Title));
         quote! {
             #found_crate::input::InputInfo {
                 name: &::std::format!("{}[{}]", name, #name),
-                name_human: #name,
+                title: #title,
                 value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
             }
         }
@@ -107,7 +111,7 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
-                _name_human: &::std::primitive::str,
+                _title: &::std::primitive::str,
                 required: ::std::primitive::bool,
                 ctx: &#found_crate::render::FormRenderContext::<'_, __S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
@@ -131,8 +135,10 @@ struct InputEnumOptions {
 }
 
 #[derive(Debug, FromVariant)]
+#[darling(attributes(cms, serde))]
 struct InputVariantOptions {
     rename: Option<String>,
+    title: Option<String>,
 }
 
 pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStream> {
@@ -166,6 +172,10 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
             let name_tag = quote!(&::std::format!("{}[{}]", name, #tag));
             let name_content = quote!(&::std::format!("{}[{}]", name, #content));
             let value = renamed_name(ident.to_string(), variant_attr.rename, attr.rename_all);
+            let title = variant_attr
+                .title
+                .clone()
+                .unwrap_or(value.to_case(Case::Title));
 
             let content_val = match v.fields {
                 syn::Fields::Named(_) => todo!(),
@@ -193,7 +203,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                     quote! {
                         ::std::option::Option::Some(#found_crate::input::InputInfo {
                             name: #name_content,
-                            name_human: #content,
+                            title: "THIS SHOULD NOT BE USED",
                             value: ::std::boxed::Box::new(#content_val),
                         })
                     }
@@ -203,6 +213,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
             Ok(quote! {
                 #found_crate::property::EnumVariant {
                     name: #name_tag,
+                    title: #title,
                     value: #value,
                     content: #content_val,
                 },
@@ -237,7 +248,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
             fn render_input(
                 value: ::std::option::Option<&Self>,
                 name: &::std::primitive::str,
-                _name_human: &::std::primitive::str,
+                _title: &::std::primitive::str,
                 required: ::std::primitive::bool,
                 ctx: &#found_crate::render::FormRenderContext<'_, __S>,
                 i18n: &#found_crate::derive::i18n_embed::fluent::FluentLanguageLoader,
