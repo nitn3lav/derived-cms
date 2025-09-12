@@ -22,6 +22,9 @@ struct EntityFieldOptions {
     ty: Type,
     #[darling(default)]
     id: bool,
+    /// Do make this field hidden by default (but still visible) in list columns
+    #[darling(default)]
+    column_hidden: bool,
     /// Do not display this field in list columns
     #[darling(default)]
     skip_column: bool,
@@ -29,8 +32,7 @@ struct EntityFieldOptions {
     skip_input: bool,
     rename: Option<String>,
     title: Option<String>,
-    #[darling(default)]
-    column_hidden: bool,
+    help: Option<String>,
 }
 
 impl EntityFieldOptions {
@@ -232,10 +234,15 @@ fn inputs_fn(fields: &[EntityFieldOptions], struct_attr: &EntityStructOptions) -
         };
         let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
         let title = f.title.clone().unwrap_or(name.to_case(Case::Title));
+        let help = match &f.help {
+            Some(help) => quote! { ::std::option::Option::Some(#help) },
+            None => quote! { ::std::option::Option::None },
+        };
         quote! {
             #found_crate::input::InputInfo::<'a, S> {
                 name: #name,
                 title: #title,
+                help: #help,
                 value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
             }
         }

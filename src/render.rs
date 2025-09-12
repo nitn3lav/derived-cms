@@ -93,8 +93,12 @@ pub fn inputs<'a, S: ContextTrait>(
 ) -> Markup {
     html! {
         @for f in inputs {
+            @let id = f.help.map(|_| Uuid::new_v4());
             div class="cms-prop-container" {
-                label class="cms-prop-label" {(f.title)}
+                label class="cms-prop-label" aria-describedby=[id] {(f.title)}
+                @if let Some(help) = f.help {
+                    div role="tooltip" id=[id] {(help)}
+                }
                 (f.value.render_input(f.name, f.title, true, &ctx, i18n))
             }
         }

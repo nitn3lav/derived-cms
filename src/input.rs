@@ -50,5 +50,7 @@ pub struct InputInfo<'a, S: ContextTrait> {
     pub name: &'a str,
     /// the title shown in the UI
     pub title: &'a str,
+    /// The help text shown in the UI
+    pub help: Option<&'a str>,
     pub value: Box<dyn DynInput<S> + 'a>,
 }

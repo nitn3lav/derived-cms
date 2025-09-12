@@ -27,6 +27,8 @@ struct InputFieldOptions {
     rename: Option<String>,
     /// The title shown in the UI
     title: Option<String>,
+    /// The help text shown in the UI
+    help: Option<String>,
 }
 
 impl InputFieldOptions {
@@ -93,10 +95,15 @@ pub fn derive_struct(input: &DeriveInput, data: &DataStruct) -> syn::Result<Toke
         };
         let name = renamed_name(ident.to_string(), f.rename.as_ref(), struct_attr.rename_all);
         let title = f.title.clone().unwrap_or(name.to_case(Case::Title));
+        let help = match &f.help {
+            Some(help) => quote! { ::std::option::Option::Some(#help) },
+            None => quote! { ::std::option::Option::None },
+        };
         quote! {
             #found_crate::input::InputInfo {
                 name: &::std::format!("{}[{}]", name, #name),
                 title: #title,
+                help: #help,
                 value: ::std::boxed::Box::new(::std::option::Option::map(value, |v| &v.#ident)),
             }
         }
@@ -204,6 +211,7 @@ pub fn derive_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<TokenStr
                         ::std::option::Option::Some(#found_crate::input::InputInfo {
                             name: #name_content,
                             title: "THIS SHOULD NOT BE USED",
+                            help: ::std::option::Option::None,
                             value: ::std::boxed::Box::new(#content_val),
                         })
                     }
