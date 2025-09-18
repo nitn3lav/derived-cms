@@ -627,7 +627,7 @@ addBtn.addEventListener("click", (e) => {{
     callOnMountRecursive(el);
 }});
 // TODO: check if this works with nested lists & onmount
-Sortable.create(list, {{ onEnd: recalculateIndices }});
+Sortable.create(list, {{ delay: 500, delayOnTouchOnly: true, onEnd: recalculateIndices }});
 "#
         );
         html! {
