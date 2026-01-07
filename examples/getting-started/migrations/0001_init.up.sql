@@ -1,0 +1,7 @@
+CREATE TABLE post (
+    id BLOB NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    content TEXT NOT NULL,
+    draft INTEGER NOT NULL
+) STRICT;

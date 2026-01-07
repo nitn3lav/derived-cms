@@ -135,7 +135,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://.tmp/db.sqlite")
+//!     let db = sqlx::Pool::<Sqlite>::connect("sqlite://db.sqlite?mode=rwc")
 //!         .await
 //!         .unwrap();
 //!     let app = App::new().entity::<Post>().with_state(db).build("uploads");

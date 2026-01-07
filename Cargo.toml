@@ -1,4 +1,4 @@
-workspace = { members = ["derived-cms-derive"] }
+workspace = { members = ["derived-cms-derive", "examples/getting-started"] }
 
 [package]
 name = "derived-cms"

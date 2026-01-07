@@ -1,17 +1,16 @@
-# derived-cms
-
-Generate a CMS, complete with admin interface and headless API interface from Rust type definitions.
-Works in cunjunction with [serde](https://docs.rs/serde/latest/serde/) and
-[ormlite](https://lib.rs/crates/ormlite) and uses [axum](https://docs.rs/axum/latest/axum/)
-as a web server.
-
-Example
-
-```rust
+use axum::extract::State;
 use chrono::{DateTime, Utc};
-use derived_cms::{App, Entity, EntityBase, Input, app::AppError, context::{Context, ContextTrait}, entity, property::{Markdown, Text, Json}};
+use derived_cms::{
+    App, Entity, EntityBase, Input,
+    app::AppError,
+    context::{Context, ContextTrait},
+    entity,
+    property::{Json, Markdown, Text},
+};
 use ormlite::{Model, sqlite::Sqlite};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde_as};
+use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -32,6 +31,32 @@ struct Post {
 }
 
 type Ctx = Context<ormlite::Pool<sqlx::Sqlite>>;
+
+#[serde_as]
+#[derive(Debug, Error, Serialize)]
+enum MyError {
+    #[error(transparent)]
+    Ormlite(
+        #[from]
+        #[serde_as(as = "DisplayFromStr")]
+        ormlite::Error,
+    ),
+    #[error(transparent)]
+    Sqlx(
+        #[from]
+        #[serde_as(as = "DisplayFromStr")]
+        sqlx::Error,
+    ),
+}
+
+impl From<MyError> for AppError {
+    fn from(value: MyError) -> Self {
+        match value {
+            MyError::Ormlite(e) => Self::new("Database error".to_string(), format!("{e:#}")),
+            MyError::Sqlx(e) => Self::new("Database error".to_string(), format!("{e:#}")),
+        }
+    }
+}
 
 impl entity::Get<Ctx> for Post {
     type RequestExt = State<Ctx>;
@@ -113,33 +138,8 @@ async fn main() {
     let db = sqlx::Pool::<Sqlite>::connect("sqlite://db.sqlite?mode=rwc")
         .await
         .unwrap();
+    sqlx::migrate!().run(&db).await.unwrap();
     let app = App::new().entity::<Post>().with_state(db).build("uploads");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
-```
-
-## REST API
-
-A REST API is automatically generated for all `Entities`.
-
-List of generated endpoints, with `name` and `name-plural`
-converted to kebab-case:
-
-- `GET /api/v1/:name-plural`:
-  - allows filtering by exact value in the query string, e. g. `?slug=asdf`. This currently
-    only works for fields whose SQL representation is a string.
-  - returns an array of entities, serialized using [serde_json](https://docs.rs/serde-json/latest/serde_json).
-- `GET /api/v1/:name/:id`
-  - get an Entity by it's id.
-  - returns the requested of Entity, serialized using [serde_json](https://docs.rs/serde-json/latest/serde_json).
-- `POST /api/v1/:name-plural`
-  - create a new Entity from the request body JSON.
-  - returns the newly created Entity as JSON.
-- `POST /api/v1/:name/:id`
-  - replaces the Entity with the specified id with the
-    request body JSON.
-  - returns the updated Entity as JSON.
-- `DELETE /api/v1/:name/:id`
-  - deletes the Entity with the specified id
-  - returns the deleted Entity as JSON.
